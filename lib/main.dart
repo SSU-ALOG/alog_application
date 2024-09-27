@@ -57,13 +57,27 @@ class _AppScreenState extends State<AppScreen> {
     const IncidentScreen(),
   ];
 
+  final List<String> _appBarTitles = [
+    '지도',
+    '문자 모아보기',
+    '안전정보',
+    '사건·사고'
+  ];
+
+  final List<IconData> _navigationIcons = [
+    Icons.map,
+    Icons.notifications,
+    Icons.info,
+    Icons.remove_red_eye
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
-          padding: EdgeInsets.fromLTRB(10, 0, 10, 0),
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
           child: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
@@ -73,9 +87,9 @@ class _AppScreenState extends State<AppScreen> {
                 // 추가 기능 구현
               },
             ),
-            title: const Text(
-              '지도',
-              style: TextStyle(
+            title: Text(
+              _appBarTitles[_selectedIndex],
+              style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -95,7 +109,7 @@ class _AppScreenState extends State<AppScreen> {
       ),
       body: IndexedStack(
         index: _selectedIndex, // 선택된 인덱스
-        children: _screens, // 화면 위젯들
+        children: _screens,    // 화면 위젯들
       ),
       bottomNavigationBar: Container(
         height: 90,
@@ -116,24 +130,13 @@ class _AppScreenState extends State<AppScreen> {
                 _selectedIndex = index; // 선택된 인덱스 업데이트
               });
             },
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.map),
-                label: '지도',
+            items: List.generate(
+              _appBarTitles.length,
+                  (index) => BottomNavigationBarItem(
+                icon: Icon(_navigationIcons[index]),
+                label: _appBarTitles[index],
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.notifications),
-                label: '문자 모아보기',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.info),
-                label: '안전정보',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.remove_red_eye),
-                label: '사건·사고',
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -141,9 +144,9 @@ class _AppScreenState extends State<AppScreen> {
   }
 }
 
+
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
-
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
 
