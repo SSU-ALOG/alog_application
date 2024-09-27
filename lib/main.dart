@@ -74,6 +74,7 @@ class _AppScreenState extends State<AppScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset : false,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
