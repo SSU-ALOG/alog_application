@@ -1,9 +1,28 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
-// import 'map.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'map.dart';
 
 void main() async {
-  // await initialize();
+  await initialize();
   runApp(const App());
+}
+
+// 초기화 함수
+Future<void> initialize() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 환경 변수 설정
+  await dotenv.load(fileName: '.env');
+
+  // 지도 초기화
+  await NaverMapSdk.instance.initialize(
+      clientId: dotenv.env['NAVER_MAP_API_KEY'],
+      onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
+  );
 }
 
 class App extends StatelessWidget {
@@ -124,14 +143,6 @@ class _AppScreenState extends State<AppScreen> {
 
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
-class NaverMapScreen extends StatelessWidget {
-  const NaverMapScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("지도 화면"));
-  }
-}
 
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
