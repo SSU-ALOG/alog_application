@@ -1,13 +1,15 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 import 'map.dart';
 
 void main() async {
   await initialize();
+  _permission();
   runApp(const App());
 }
 
@@ -23,6 +25,15 @@ Future<void> initialize() async {
       clientId: dotenv.env['NAVER_MAP_API_KEY'],
       onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
   );
+}
+
+// 퍼미션 함수
+void _permission() async {
+  var requestStatus = await Permission.location.request();
+  var status = await Permission.location.status;
+  if (requestStatus.isPermanentlyDenied || status.isPermanentlyDenied) {
+    openAppSettings();
+  }
 }
 
 class App extends StatelessWidget {
@@ -51,7 +62,7 @@ class _AppScreenState extends State<AppScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    const NaverMapScreen(),
+    const MapScreen(),
     const NotificationsScreen(),
     const SafetyInfoScreen(),
     const IncidentScreen(),

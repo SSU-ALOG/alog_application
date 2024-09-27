@@ -4,32 +4,26 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
-class Map extends StatelessWidget {
-  const Map({super.key});
+class MapScreen extends StatefulWidget {
+  const MapScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Naver Map UI',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const NaverMapScreen(),
-    );
-  }
+  _MapScreenState createState() => _MapScreenState();
 }
 
-class NaverMapScreen extends StatefulWidget {
-  const NaverMapScreen({Key? key}) : super(key: key);
-
-  @override
-  _NaverMapScreenState createState() => _NaverMapScreenState();
-}
-
-class _NaverMapScreenState extends State<NaverMapScreen> {
-  final Completer<NaverMapController> mapControllerCompleter = Completer();
-
+class _MapScreenState extends State<MapScreen> {
   Set<String> _selectedFilters = {'ALL'};
+
+  final List<String> filterNames = [
+    'ALL',
+    '범죄',
+    '건강위해',
+    '안전사고',
+    '자연재해',
+    '재난',
+    '동식물',
+    '기타',
+  ];
 
   void _toggleFilter(String filter) {
     setState(() {
@@ -60,17 +54,7 @@ class _NaverMapScreenState extends State<NaverMapScreen> {
     return Center(
       child: Stack(
         children: [
-          NaverMap(
-            options: const NaverMapViewOptions(
-              indoorEnable: true,
-              locationButtonEnable: true,
-              consumeSymbolTapEvents: false,
-            ),
-            onMapReady: (controller) async {
-              mapControllerCompleter.complete(controller);
-              log("onMapReady", name: "onMapReady");
-            },
-          ),
+          Map(),
           Column(
             children: [
               // 검색창
@@ -103,12 +87,11 @@ class _NaverMapScreenState extends State<NaverMapScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Padding(
-                  // padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   padding: EdgeInsets.fromLTRB(16, 5, 16, 5),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ...['ALL', '범죄', '건강위해', '안전사고', '자연재해', '재난', '동식물', '기타'].map(
+                      ...filterNames.map(
                             (filter) => MapFilterChip(
                           label: filter,
                           isSelected: _selectedFilters.contains(filter),
@@ -123,6 +106,25 @@ class _NaverMapScreenState extends State<NaverMapScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class Map extends StatelessWidget {
+  final Completer<NaverMapController> mapControllerCompleter = Completer();
+
+  @override
+  Widget build(BuildContext context) {
+    return NaverMap(
+      options: const NaverMapViewOptions(
+        indoorEnable: true,
+        locationButtonEnable: true,
+        consumeSymbolTapEvents: false,
+      ),
+      onMapReady: (controller) async {
+        mapControllerCompleter.complete(controller);
+        log("onMapReady", name: "onMapReady");
+      },
     );
   }
 }
@@ -151,9 +153,9 @@ class MapFilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black12,
-                blurRadius: 4,
-                offset: Offset(0, 0)
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, 0)
               ),
             ],
             border: Border.all(
