@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 import 'map.dart';
+import 'incident.dart';
 
 void main() async {
   await initialize();
@@ -119,10 +120,17 @@ class _AppScreenState extends State<AppScreen> {
           ),
         ),
       ),
+
+
+
+
       body: IndexedStack(
         index: _selectedIndex, // 선택된 인덱스
         children: _screens,    // 화면 위젯들
       ),
+
+
+
       bottomNavigationBar: Container(
         height: 90,
         child: Theme(   // 터치 애니메이션 효과 제거를 위해 Theme 사용
@@ -176,12 +184,12 @@ class SafetyInfoScreen extends StatelessWidget {
     return Center(child: Text("안전 정보 화면"));
   }
 }
-
-class IncidentScreen extends StatelessWidget {
-  const IncidentScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("사건·사고 화면"));
-  }
-}
+//
+// class IncidentScreen extends StatelessWidget {
+//   const IncidentScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("사건·사고 화면"));
+//   }
+// }
