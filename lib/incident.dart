@@ -4,6 +4,65 @@ import 'dart:developer';
 import 'package:alog/main.dart';
 import 'package:flutter/material.dart';
 
+// Disaster Categories
+const List<String> disasterCategories = [
+  'ALL',
+  '범죄',
+  '화재',
+  '건강위해',
+  '안전사고',
+  '자연재해',
+  '재난',
+  '동식물 재난',
+  '도시 서비스',
+  '디지털 서비스',
+  '기타'
+];
+
+// Status list
+const List<String> disasterStatusList = [
+  'ALL',
+  '진행중',
+  '상황종료',
+  '긴급',
+];
+
+// Colors per disaster status=
+const Map<String, Color> disasterStatusColors = {
+  'ALL': Colors.redAccent, // 배경 빨간색
+  '진행중': Colors.orange, // 배경 주황색
+  '상황종료': Colors.green, // 배경 초록색
+  '긴급': Colors.redAccent, // 배경 빨간색 (텍스트 색상도 빨간색)
+};
+
+// Icons per disaster status
+const Map<String, IconData> disasterStatusIcons = {
+  '진행중': Icons.warning,
+  '상황종료': Icons.check_circle,
+  '긴급': Icons.error_outline,
+};
+
+const List<String> regions = [
+  'ALL',
+  '서울특별시',
+  '부산광역시',
+  '대구광역시',
+  '인천광역시',
+  '광주광역시',
+  '대전광역시',
+  '울산광역시',
+  '세종특별자치시',
+  '경기도',
+  '충청북도',
+  '충청남도',
+  '전라남도',
+  '경상북도',
+  '경상남도',
+  '강원특별자치도',
+  '전북특별자치도',
+  '제주특별자치도'
+];
+
 class IncidentScreen extends StatefulWidget {
   const IncidentScreen({Key? key}) : super(key: key);
 
@@ -12,23 +71,9 @@ class IncidentScreen extends StatefulWidget {
 }
 
 class _IncidentScreenState extends State<IncidentScreen> {
-
   Set<String> _selectedDisaster = {'ALL'};
-  final List<String> disasterCategories = [
-    'ALL',
-    '범죄',
-    '화재',
-    '건강위해',
-    '안전사고',
-    '자연재해',
-    '재난',
-    '동식물 재난',
-    '도시 서비스',
-    '디지털 서비스',
-    '기타'
-  ];
 
-  void _toggleFilter(String filter) {
+  void _disasterToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
         // ALL 선택 시 다른 필터를 해제
@@ -52,23 +97,9 @@ class _IncidentScreenState extends State<IncidentScreen> {
     });
   }
 
-
-
-
   Set<String> _selectedDisasterStatus = {'ALL'};
-  final List<String> disasterStatus = [
-    'ALL',
-    '진행중',
-    '상황종료',
-    '긴급',
-  ];
-  final Map<String, IconData> disasterStatusIcons = {
-    '진행중': Icons.warning,
-    '상황종료': Icons.check_circle,
-    '긴급': Icons.error_outline,
-  };
 
-  void _toggleStatusFilter(String filter) {
+  void _disasterStatusToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
         // ALL 선택 시 다른 필터를 해제
@@ -95,128 +126,152 @@ class _IncidentScreenState extends State<IncidentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar는 main.dart에
-      body: Column(
-        children: [
-          // 검색창, 필터 버튼 등 고정된 상단 위젯
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 검색창
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
-                  child: Container(
-                    height: 55,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(1.0),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4.0,
-                          offset: Offset(0, 0),
-                        ),
-                      ],
+        // appBar- main.dart
+        body: Column(children: [
+      // 검색창, 필터 버튼 등 고정된 상단 위젯
+      Padding(
+        padding: const EdgeInsets.all(3.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 검색창
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
+              child: Container(
+                height: 55,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(1.0),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4.0,
+                      offset: Offset(0, 0),
                     ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: '검색어를 입력해주세요',
-                        prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
+                  ],
+                ),
+                child: TextField(
+                  decoration: InputDecoration(
+                    prefix: const SizedBox(width: 20),
+                    hintText: '검색어를 입력해주세요',
+                    suffixIcon: const Icon(Icons.search, color: Colors.grey),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                 ),
-
-                // 재난종류 카테고리
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 5, 16, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ...disasterCategories.map(
-                              (filter) => DisasterFilterChip(
-                            label: filter,
-                            isSelected: _selectedDisaster.contains(filter),
-                            onSelected: () => _toggleFilter(filter),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // 재난상태 카테고리
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 5, 16, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ...disasterStatus.map(
-                              (filter) => StatusFilterChip(
-                            label: filter,
-                            isSelected: _selectedDisasterStatus.contains(filter),
-                            onSelected: () => _toggleStatusFilter(filter),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // 지역 선택 드롭다운
-                RegionDropDown(),
-                SizedBox(height: 16.0),
-              ],
+              ),
             ),
-          ),
 
-
-          // 사건 리스트
-          Expanded(
-            child: ListView(
-              children: [
-                EventCard(
-                  status: '진행 중',
-                  date: '2024.10.03',
-                  description: 'Description. Lorem ipsum dolor sit amet.',
-                  backgroundColor: Colors.orange.shade100,
-                  iconColor: Colors.orange,
-                  icon: disasterStatusIcons['진행중'],
+            // Disaster Category part
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: disasterCategories
+                      .map(
+                        (filter) => DisasterFilterChip(
+                          label: filter,
+                          isSelected: _selectedDisaster.contains(filter),
+                          onSelected: () => _disasterToggleFilter(filter),
+                        ),
+                      )
+                      .toList(),
                 ),
-                EventCard(
-                  status: '상황 종료',
-                  date: '2024.10.03',
-                  description: 'Description. Lorem ipsum dolor sit amet.',
-                  backgroundColor: Colors.green.shade100,
-                  iconColor: Colors.green,
-                  icon: disasterStatusIcons['상황종료'],
-                ),
-                EventCard(
-                  status: '긴급 재난',
-                  date: '2024.10.03',
-                  description: 'Description. Lorem ipsum dolor sit amet.',
-                  backgroundColor: Colors.red.shade100,
-                  iconColor: Colors.red,
-                  icon: disasterStatusIcons['긴급'],
-                ),
-              ],
+              ),
             ),
+
+            // Disaster Status part
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: disasterStatusList
+                      .map(
+                        (filter) => DisasterStatusFilterChip(
+                          label: filter,
+                          isSelected: _selectedDisasterStatus.contains(filter),
+                          onSelected: () => _disasterStatusToggleFilter(filter),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ),
+
+            // Regions
+            RegionDropDown(),
+            SizedBox(height: 5.0),
+          ],
+        ),
+      ),
+
+      // Accidents list
+      Expanded(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 10.0), // 좌우 10px 여백 추가
+          child: ListView(
+            children: [
+              EventCard(
+                status: '진행 중',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.orange.shade100,
+                iconColor: Colors.orange,
+                icon: disasterStatusIcons['진행중'],
+              ),
+              EventCard(
+                status: '상황 종료',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.green.shade100,
+                iconColor: Colors.green,
+                icon: disasterStatusIcons['상황종료'],
+              ),
+              EventCard(
+                status: '진행 중',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.orange.shade100,
+                iconColor: Colors.orange,
+                icon: disasterStatusIcons['진행중'],
+              ),
+              EventCard(
+                status: '상황 종료',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.green.shade100,
+                iconColor: Colors.green,
+                icon: disasterStatusIcons['상황종료'],
+              ),
+              EventCard(
+                status: '긴급 재난',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.red.shade100,
+                iconColor: Colors.red,
+                icon: disasterStatusIcons['긴급'],
+              ),
+              EventCard(
+                status: '긴급 재난',
+                date: '2024.10.03',
+                description: 'Description. Lorem ipsum dolor sit amet.',
+                backgroundColor: Colors.red.shade100,
+                iconColor: Colors.red,
+                icon: disasterStatusIcons['긴급'],
+              ),
+            ],
           ),
-        ]
+        ), // Container
       )
-    );
+    ]));
   }
 }
 
-// filter widget
+// Disaster Category filter widget
 class DisasterFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -241,10 +296,7 @@ class DisasterFilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 0)
-              ),
+                  color: Colors.black12, blurRadius: 4, offset: Offset(0, 0)),
             ],
             border: Border.all(
               color: isSelected ? Colors.redAccent : Colors.grey.shade300,
@@ -267,29 +319,18 @@ class DisasterFilterChip extends StatelessWidget {
   }
 }
 
-class StatusFilterChip extends StatelessWidget {
+// Disaster Status filter widget
+class DisasterStatusFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onSelected;
 
-  // 각 재난 상황별 필터 색상 설정
-  final Map<String, Color> disasterStatusColors = {
-    'ALL': Colors.redAccent,    // 배경 빨간색
-    '진행중': Colors.orange,     // 배경 주황색
-    '상황종료': Colors.green,   // 배경 초록색
-    '긴급': Colors.redAccent,    // 배경 빨간색 (텍스트 색상도 빨간색)
-  };
-
-  StatusFilterChip({
+  DisasterStatusFilterChip({
     Key? key,
     required this.label,
     required this.isSelected,
     required this.onSelected,
   }) : super(key: key);
-
-  // isSelected: selectedRegion == status,
-  // backgroundColor: disasterStatusColors[status] ?? Colors.white,
-  // textColor: status == '긴급' ? Colors.redAccent : Colors.white,
 
   @override
   Widget build(BuildContext context) {
@@ -303,13 +344,12 @@ class StatusFilterChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, 0)
-              ),
+                  color: Colors.black12, blurRadius: 4, offset: Offset(0, 0)),
             ],
             border: Border.all(
-              color: isSelected ? disasterStatusColors[label]! : Colors.grey.shade300,
+              color: isSelected
+                  ? disasterStatusColors[label]!
+                  : Colors.grey.shade300,
             ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
@@ -329,52 +369,32 @@ class StatusFilterChip extends StatelessWidget {
   }
 }
 
-// dropdown widget
-class RegionDropDown extends StatefulWidget{
+// Region Dropdown widget
+class RegionDropDown extends StatefulWidget {
   @override
   _RegionDropDownState createState() => _RegionDropDownState();
 }
-class _RegionDropDownState extends State<RegionDropDown> {
-  String? selectedRegion = 'ALL';
 
-  final List<String> regions = [
-    'ALL',
-    '서울특별시',
-    '부산광역시',
-    '대구광역시',
-    '인천광역시',
-    '광주광역시',
-    '대전광역시',
-    '울산광역시',
-    '세종특별자치시',
-    '경기도',
-    '충청북도',
-    '충청남도',
-    '전라남도',
-    '경상북도',
-    '경상남도',
-    '강원특별자치도',
-    '전북특별자치도',
-    '제주특별자치도'
-  ];
+class _RegionDropDownState extends State<RegionDropDown> {
+  String? _selectedRegion = 'ALL';
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Row(
       children: [
-        Text('지역:'),
+        Text('      지역:'),
         SizedBox(width: 8.0),
         DropdownButton<String>(
-          value: selectedRegion,
+          value: _selectedRegion,
           items: regions
               .map((region) => DropdownMenuItem(
-            value: region,
-            child: Text(region),
-          ))
+                    value: region,
+                    child: Text(region),
+                  ))
               .toList(),
           onChanged: (value) {
             setState(() {
-              selectedRegion = value; // 선택 값 update
+              _selectedRegion = value; // 선택 값 update
             });
           },
         ),
@@ -395,7 +415,8 @@ class EventCard extends StatelessWidget {
     required this.date,
     required this.description,
     required this.backgroundColor,
-    required this.iconColor, IconData? icon,
+    required this.iconColor,
+    IconData? icon,
   });
 
   @override
