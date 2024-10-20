@@ -1,16 +1,17 @@
 import 'dart:developer';
 
+import 'package:alog/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 import 'map.dart';
 import 'incident.dart';
+import 'user_login.dart';
+import 'user_info.dart';
 
 void main() async {
   await initialize();
-  _permission();
   runApp(const App());
 }
 
@@ -26,15 +27,6 @@ Future<void> initialize() async {
       clientId: dotenv.env['NAVER_MAP_API_KEY'],
       onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
   );
-}
-
-// 퍼미션 함수
-void _permission() async {
-  var requestStatus = await Permission.location.request();
-  var status = await Permission.location.status;
-  if (requestStatus.isPermanentlyDenied || status.isPermanentlyDenied) {
-    openAppSettings();
-  }
 }
 
 class App extends StatelessWidget {
@@ -61,6 +53,7 @@ class AppScreen extends StatefulWidget {
 
 class _AppScreenState extends State<AppScreen> {
   int _selectedIndex = 0;
+  bool isLogin = true; // 우선 세션부분은 처리 안함
 
   final List<Widget> _screens = [
     const MapScreen(),
@@ -114,23 +107,26 @@ class _AppScreenState extends State<AppScreen> {
                 icon: const Icon(Icons.person, color: Colors.black),
                 onPressed: () {
                   // 프로필 기능 구현
+                  // Navigate to the user_login.dart page
+
+                  // Naver login session 존재 시. UserInfoScreen()으로 넘어가게끔
+
+                  // Naver login session 없을 시. UserLoginScreen()으로 넘어가게끔
+                  // 우선 이걸로 activity 넘어가게끔 함.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => isLogin ? UserInfoScreen() : UserLoginScreen() ),
+                  );
                 },
               ),
             ],
           ),
         ),
       ),
-
-
-
-
       body: IndexedStack(
         index: _selectedIndex, // 선택된 인덱스
-        children: _screens,    // 화면 위젯들
+        children: _screens,    // 화면 위젯
       ),
-
-
-
       bottomNavigationBar: Container(
         height: 90,
         child: Theme(   // 터치 애니메이션 효과 제거를 위해 Theme 사용
@@ -167,6 +163,7 @@ class _AppScreenState extends State<AppScreen> {
 
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
+
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
 
