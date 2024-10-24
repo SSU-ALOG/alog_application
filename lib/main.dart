@@ -10,6 +10,11 @@ import 'incident.dart';
 import 'user_login.dart';
 import 'user_info.dart';
 
+bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
+String? name;
+String? email;
+String? phoneNumber;
+
 void main() async {
   await initialize();
   runApp(const App());
@@ -53,7 +58,6 @@ class AppScreen extends StatefulWidget {
 
 class _AppScreenState extends State<AppScreen> {
   int _selectedIndex = 0;
-  bool isLogin = true; // 우선 세션부분은 처리 안함
 
   final List<Widget> _screens = [
     const MapScreen(),
