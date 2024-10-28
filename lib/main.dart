@@ -9,6 +9,8 @@ import 'map.dart';
 import 'incident.dart';
 import 'user_login.dart';
 import 'user_info.dart';
+import 'streaming_sender.dart';
+import 'streaming_viewer.dart';
 
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
@@ -94,7 +96,45 @@ class _AppScreenState extends State<AppScreen> {
             leading: IconButton(
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
-                // 추가 기능 구현
+                // 라이브 스트리밍 버튼 임시 구현
+                showModalBottomSheet(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return Container(
+                      padding: EdgeInsets.all(20),
+                      height: 150,
+                      child: Column(
+                        children: [
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);  // 모달창 닫기
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LiveStreamStartScreen(),
+                                ),
+                              );
+                            },
+                            child: Text('Go to Live'),
+                          ),
+                          SizedBox(height: 10),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pop(context);  // 모달창 닫기
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => LiveStreamWatchScreen(),
+                                ),
+                              );
+                            },
+                            child: Text('Go to View'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
               },
             ),
             title: Text(

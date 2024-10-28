@@ -44,6 +44,8 @@ dependencies:
   path_provider: ^2.1.4
   video_player: ^2.9.1
   wakelock_plus: ^1.2.8
+  http: ^1.2.2
+  crypto: ^3.0.6
 
   # 네이버 로그인 관련
   flutter_naver_login: ^1.8.0
