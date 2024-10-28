@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'package:flutter_naver_login/flutter_naver_login.dart';
+
+import 'user_login.dart';
+import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
 
 final GlobalKey<ScaffoldMessengerState> snackbarKey =
     GlobalKey<ScaffoldMessengerState>();
@@ -9,16 +14,6 @@ class UserInfoScreen extends StatefulWidget {
 }
 
 class _UserInfoScreenState extends State<UserInfoScreen> {
-  bool isLogin = false;
-  String? name = '햇님이'; // 테스트용 임시 값
-  String? email = 'ididid@naver.com'; // 테스트용 임시 값
-  String? phoneNumber = '010-1236-1235'; // 테스트용 임시 값
-  String? profileImageUrl; // 프로필 이미지 URL (null일 경우 기본 이미지 사용)
-
-  // String? accessToken;
-  // String? expiresAt;
-  // String? tokenType;
-  // String? refreshToken;
 
   /// Show [error] content in a ScaffoldMessenger snackbar
   void _showSnackError(String error) {
@@ -53,7 +48,9 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.of(context). pushReplacement(MaterialPageRoute(
+                  builder: (context) => AppScreen(),
+                ));
               },
             ),
             title: const Text(
@@ -78,11 +75,12 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             children: [
               CircleAvatar(
                 radius: 50,
-                backgroundImage: profileImageUrl != null
-                    ? NetworkImage(profileImageUrl!)
-                    : AssetImage('assets/images/default_profile.png')
-                        as ImageProvider,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: Colors.grey[200],  // 아이콘 배경색
+                child: Icon(
+                  Icons.person,  // 사람 아이콘
+                  size: 50,  // 아이콘 크기
+                  color: Colors.grey,  // 아이콘 색상
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -102,17 +100,18 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                phoneNumber ?? '전화번호 없음',
+                phoneNumber ?? ' 전화번호 없음',
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
                 ),
               ),
-              const SizedBox(height: 400),
+              const SizedBox(height: 250), // 400 -> 250 수정
               GestureDetector(
                 onTap: () {
                   // 로그아웃 로직 구현
                   // 로그아웃 후 화면을 초기화하거나 다른 화면으로 전환
+                  naverLogout(context);
                 },
                 child: Container(
                   decoration: BoxDecoration(
@@ -129,13 +128,14 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                       'assets/images/naver_logout.png', // 로그아웃 이미지 경로
                       width: 200,
                       height: 60,
-                      fit: BoxFit.cover),
+                      fit: BoxFit.contain),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 5), // 10 -> 5 수정
               TextButton(
                 onPressed: () {
                   // 네이버 로그인 연동 해제 로직
+                  unlinkNaverAccount(context);
                 },
                 child: const Text(
                   '네이버 로그인 연동해제',
@@ -151,5 +151,48 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
       ),
       backgroundColor: Colors.white,
     );
+  }
+}
+
+// 네이버 로그아웃
+Future<void> naverLogout(BuildContext context) async {
+  try {
+    // 네이버 로그아웃 실행
+    await FlutterNaverLogin.logOut();
+    print("Logout successful");
+
+    // 로그인 상태 false로 업데이트
+    isLogin = false;
+
+    // 로그인 페이지로 이동 (현재 페이지를 대체)
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => UserLoginScreen(),
+      ),
+    );
+  } catch (error) {
+    print("Logout failed: $error");
+  }
+}
+
+
+// 네이버 로그인 연동 해제 (회원 탈퇴) 기능
+Future<void> unlinkNaverAccount(BuildContext context) async {
+  try {
+    //wait FlutterNaverLogin.logOut();  // 로그아웃
+    await FlutterNaverLogin.logOutAndDeleteToken();  // 네이버 연동 해제
+
+    // 성공 시 처리 로직
+    print("네이버 계정 연동 해제 성공");
+    isLogin = false;
+
+    // 회원 탈퇴 후 로그인을 요청하는 페이지로 이동
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => UserLoginScreen(),
+      ),
+    );
+  } catch (error) {
+    print("네이버 계정 연동 해제 실패: $error");
   }
 }
