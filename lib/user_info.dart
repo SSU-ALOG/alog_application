@@ -6,7 +6,7 @@ import 'user_login.dart';
 import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
 
 final GlobalKey<ScaffoldMessengerState> snackbarKey =
-    GlobalKey<ScaffoldMessengerState>();
+GlobalKey<ScaffoldMessengerState>();
 
 class UserInfoScreen extends StatefulWidget {
   @override
