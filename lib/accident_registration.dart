@@ -156,6 +156,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
@@ -273,25 +274,27 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
 
             // 등록 버튼
             Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  // 등록 기능
-                  await _submitIssue();
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.85, // 화면 너비의 80%로 설정
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // 등록 기능
+                    await _submitIssue();
 
-                  // 홈화면 전환
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF6969),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 160, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
+                    // 홈화면 전환
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6969),
+                    padding: const EdgeInsets.symmetric(vertical: 15), // 세로 padding만 설정
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  '등록',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  child: const Text(
+                    '등록',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ),
             ),

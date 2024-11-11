@@ -65,7 +65,8 @@ class _AppScreenState extends State<AppScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const NotificationsScreen(),
-    const SafetyInfoScreen(),
+    // const SafetyInfoScreen(),
+    SafetyInfoScreen(),
     const IncidentScreen(),
   ];
 
