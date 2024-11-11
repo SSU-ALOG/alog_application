@@ -40,6 +40,9 @@ dependencies:
   permission_handler: ^11.3.1
   geolocator: ^13.0.1
 
+  # 행동요령 관련
+  url_launcher: ^6.3.1
+
   # live streaming 관련
   rtmp_broadcaster: ^2.2.6
   path_provider: ^2.1.4
