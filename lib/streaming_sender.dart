@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:rtmp_broadcaster/camera.dart';
 import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // signiture 생성 함수
 String generateSignature(String secretKey, String method, String uri, String timestamp, String accessKey) {
@@ -21,12 +22,86 @@ String generateSignature(String secretKey, String method, String uri, String tim
   return base64.encode(digest.bytes);
 }
 
+Future<void> getQualitySet() async {
+  String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';
+  String secretKey = dotenv.env['SECRET_KEY'] ?? '';
+  String method = 'GET';
+  String uri = '/api/v2/qualitySets';
+  String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+  // 서명(Signature) 생성
+  String signature = generateSignature(secretKey, method, uri, timestamp, accessKey);
+
+  // 요청 헤더 설정
+  Map<String, String> headers = {
+    'Content-Type': 'application/json',
+    'x-ncp-apigw-timestamp': timestamp,
+    'x-ncp-iam-access-key': accessKey,
+    'x-ncp-apigw-signature-v2': signature,
+    'x-ncp-region_code': 'KR',
+  };
+
+  String host = 'livestation.apigw.ntruss.com';
+  // 요청 URL 생성 (genType과 channelType을 쿼리 파라미터로 추가)
+  final url = Uri.https(host, uri);
+
+  // GET 요청 보내기
+  final response = await http.get(url, headers: headers);
+
+  if (response.statusCode == 200) {
+    print("Quality Set data: ${response.body}");
+  } else {
+    print("Failed to retrieve quality set: ${response.statusCode}");
+    print("Error details: ${response.body}");
+  }
+}
+
+// CDN 리스트의 ProfilesID를 가져오기
+Future<void> listProfiles() async {
+  String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';
+  String secretKey = dotenv.env['SECRET_KEY'] ?? '';
+  String uri = '/cdn/v2/getGlobalCdnInstanceList';
+  String method = "GET";
+  String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+  // 시그니처 생성
+  String signature = generateSignature(secretKey, method, uri, timestamp, accessKey);
+
+  // 요청 헤더 설정
+  final headers = {
+    'Content-Type': 'application/json',
+    'x-ncp-apigw-timestamp': timestamp,
+    'x-ncp-iam-access-key': accessKey,
+    'x-ncp-apigw-signature-v2': signature,
+  };
+
+  String host = 'ncloud.apigw.gov-ntruss.com';
+  final url = Uri.https(host, uri);
+
+  try {
+    // GET 요청 보내기
+    final response = await http.get(url, headers: headers);
+
+    // 응답 처리
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      print("Global CDN 인스턴스 목록 조회 성공: $responseData");
+    } else {
+      print("Global CDN 인스턴스 목록 조회 실패: ${response.statusCode}");
+      print("에러 메시지: ${response.body}");
+    }
+  } catch (e) {
+    print("요청 중 오류 발생: $e");
+  }
+
+}
+
 // 채널 생성
 Future<String?> createChannel() async {
   String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';  // .env 파일에서 가져옴
   String secretKey = dotenv.env['SECRET_KEY'] ?? '';  // .env 파일에서 가져옴
   String method = 'POST';
-  String uri = '/live-station/v1/channels';
+  String uri = '/api/v2/channels';
   String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
 
   // 서명 생성 (예시 함수)
@@ -38,25 +113,42 @@ Future<String?> createChannel() async {
     'x-ncp-iam-access-key': accessKey,
     'x-ncp-apigw-timestamp': timestamp,
     'x-ncp-apigw-signature-v2': signature,
+    'x-ncp-region_code': 'KR',
   };
 
   // 채널 생성 요청 바디
   Map<String, dynamic> body = {
-    'channelName': name,
-    'useDvr': true,
-    'useTimeShift': false,
-    'useLowLatency': true,
-    'serviceType': 'LIVE',
-    'contentType': 'VOD',
-    'video': {
-      'protocol': 'HLS',
-      'resolution': '1920x1080',
-      'bitrate': '3000'
-    }
+    "channelName" : "testchannel",
+    "cdn" : {
+      "createCdn" : false,
+      "cdnType": "GLOBAL_EDGE",
+      "cdnDomain": "wsarscro4796.edge.naverncp.com",
+      "profileId": 2389,
+      "cdnInstanceNo": 4796
+    },
+    "qualitySetId" : 8,
+    "useDvr" : false,
+    "immediateOnAir" : true,
+    //"timemachineMin" : 360,
+    "envType" : "DEV",
+    "outputProtocol" : "HLS",
+    "record": {
+      "type": "AUTO_UPLOAD",
+      "format": "MP4",
+      "bucketName": "alog-streaming",
+      "filePath": "/livestation",
+      "accessControl": "PRIVATE"
+    },
+    "isStreamFailOver": false,
+    "drmEnabledYn": false,
+    // "drm": {
+    //   "siteId": "drm-20231115142326-nHyNw",
+    //   "contentId": "my-Test-Multidrm"
+    // }
   };
 
   var response = await http.post(
-    Uri.parse('https://api.ncloud.com' + uri),
+    Uri.parse('https://livestation.apigw.ntruss.com' + uri),
     headers: headers,
     body: jsonEncode(body),
   );
@@ -68,6 +160,7 @@ Future<String?> createChannel() async {
     return channelId;  // 생성된 채널 ID 반환
   } else {
     print('채널 생성 실패: ${response.statusCode}');
+    print('Error details: ${response.body}');  // 서버 응답 내용 출력
     return null;
   }
 }
@@ -208,19 +301,17 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
   @override
   Widget build(BuildContext context) {
-    // 화면의 3분의 1 높이를 계산하기 위해 MediaQuery 사용
     double screenHeight = MediaQuery.of(context).size.height;
-    double chatHeight = screenHeight / 3;  // 채팅 영역을 화면의 3분의 1로 제한
+    double chatHeight = screenHeight / 3; // 채팅 영역 높이 설정
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,  // 키보드가 올라올 때 화면을 자동으로 조정
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: Colors.black),
           onPressed: () {
-            // 뒤로 가기 로직
             Navigator.pop(context);
           },
         ),
@@ -248,119 +339,124 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       body: Stack(
         children: [
           Positioned.fill(
-            child: Column(
-              children: [
-                Expanded(
-                  child: enableCamera
-                      ? Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      border: Border.all(
-                        color: Colors.grey, // 사용자가 정의한 색상
-                        width: 3.0,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(1.0),
-                      child: Center(
-                        child: _cameraPreviewWidget(), // 카메라 프리뷰 위젯
-                      ),
-                    ),
-                  )
-                      : Container(
-                    color: Colors.white, // 초기화 중 흰색 배경
-                    child: Center(
-                      child: enableCamera
-                          ? CircularProgressIndicator() // 카메라 초기화 중
-                          : Text("Camera is off"), // 카메라 비활성화 상태
-                    ),
-                  ),
+            child: enableCamera
+                ? Container(
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(
+                  color: Colors.grey,
+                  width: 3.0,
                 ),
-                // 채팅 및 다른 UI 요소
-                Container(
-                  height: chatHeight,  // 채팅 영역을 화면의 3분의 1로 제한
-                  child: ListView.builder(
-                    reverse: true,
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 10.0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            padding: EdgeInsets.all(10),
-                            margin: EdgeInsets.only(top: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  messages[index]['user']!,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: Colors.grey,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(1.0),
+                child: Center(
+                  child: _cameraPreviewWidget(),
+                ),
+              ),
+            )
+                : Container(
+              color: Colors.white,
+              child: Center(
+                child: enableCamera
+                    ? CircularProgressIndicator()
+                    : Text("Camera is off"),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: chatHeight,
+            child: Container(
+              color: Colors.transparent, // 완전 투명 배경 설정
+              child: Column(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      reverse: true,
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 10.0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(vertical: 5, horizontal: 6), // 내부 여백 줄이기
+                              margin: EdgeInsets.only(top: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    messages[index]['user']!,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  messages[index]['message']!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.black,
+                                  Text(
+                                    messages[index]['message']!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border.all(color: Colors.white, width: 2),
-                      borderRadius: BorderRadius.circular(20),
+                        );
+                      },
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _commentController,
-                            decoration: InputDecoration(
-                              hintText: 'Comment',
-                              hintStyle: TextStyle(color: Colors.white),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(color: Colors.white, width: 2),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _commentController,
+                              decoration: InputDecoration(
+                                hintText: 'Comment',
+                                hintStyle: TextStyle(color: Colors.white),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                              ),
+                              style: TextStyle(color: Colors.white),
                             ),
-                            style: TextStyle(color: Colors.black),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.send, color: Colors.white),
-                          onPressed: () {
-                            if (_commentController.text.isNotEmpty) {
-                              setState(() {
-                                messages.insert(0, {
-                                  'user': 'USER${messages.length + 1}',
-                                  'message': _commentController.text,
+                          IconButton(
+                            icon: Icon(Icons.send, color: Colors.white),
+                            onPressed: () {
+                              if (_commentController.text.isNotEmpty) {
+                                setState(() {
+                                  messages.insert(0, {
+                                    'user': 'USER${messages.length + 1}',
+                                    'message': _commentController.text,
+                                  });
+                                  _commentController.clear();
                                 });
-                                _commentController.clear();
-                              });
-                            }
-                          },
-                        ),
-                      ],
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Positioned(
@@ -371,7 +467,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                 IconButton(
                   icon: Icon(isStreaming ? Icons.stop : Icons.wifi_tethering),
                   onPressed: () {
-                    isStreaming ? onStopStreamingButtonPressed() : onVideoStreamingButtonPressed();
+                    //getQualitySet();
+                    //listProfiles();
+                    //createChannel();
+                    //isStreaming ? onStopStreamingButtonPressed() : onVideoStreamingButtonPressed();
                   },
                 ),
                 SizedBox(height: 10),
@@ -397,6 +496,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     );
   }
 
+
   // 카메라 초기화 후 미리보기
   Widget _cameraPreviewWidget() {
     if (controller == null || !isControllerInitialized) {
@@ -419,7 +519,6 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   // 마이크 on/off
   void toggleMic() async {
     //enableAudio = !enableAudio; // 마이크 상태 토글
-
     // 카메라 상태는 유지하고, 마이크 상태만 변경
     if (controller != null) {
       // 현재 상태에 따라 처리
@@ -435,8 +534,11 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
         print("Mic turned on");
       }
 
+      // 권한 요청
+      //await requestPermissions();
+
       // 카메라를 새로 선택하는 대신, 마이크 상태만 업데이트
-      await onNewCameraSelected(controller!.description); // 현재 카메라에 대한 설정을 다시 적용
+      //await onNewCameraSelected(controller!.description); // 현재 카메라에 대한 설정을 다시 적용
     }
   }
 
@@ -488,13 +590,29 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
   String timestamp() => DateTime.now().millisecondsSinceEpoch.toString();
 
+  Future<void> requestPermissions() async {
+    // 카메라 권한 요청
+    if (!await Permission.camera.request().isGranted) {
+      print('Camera permission not granted');
+      return;
+    }
+
+    // 마이크 권한 요청 (오디오 활성화 시 필요)
+    if (enableAudio && !await Permission.microphone.request().isGranted) {
+      print('Microphone permission not granted');
+      return;
+    }
+  }
+
   // 새로운 카메라를 선택하고, 선택된 카메라에 대한 초기화와 상태 변화를 UI에 반영
   Future<void> onNewCameraSelected(CameraDescription? cameraDescription) async {
     if (cameraDescription == null) return;
+    print('11111');
 
     if (controller != null) {
       await stopVideoStreaming();
       await controller?.dispose();
+      print('22222');
     }
 
     controller = CameraController(
@@ -504,10 +622,15 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       androidUseOpenGL: useOpenGL,
     );
 
+    print('33333');
+
     controller!.addListener(() async {
       if (mounted) setState(() {});
 
+      print('44444');
+
       if (controller != null) {
+        print('55555');
         if (controller!.value.hasError) {
           print('Camera error ${controller!.value.errorDescription}');
           await stopVideoStreaming();
@@ -521,6 +644,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
               await stopVideoStreaming();
             }
           } catch (e) {
+            print('66666');
             print(e);
           }
         }
@@ -529,13 +653,18 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
     try {
       await controller!.initialize();
-    } on CameraException catch (e) {
+      print('카메라 초기화 완료');
+    }
+    on CameraException catch (e) {
+      print('Camera initialization failed: $e');
+      print('Error details: ${e.description}');
       _showCameraException(e);
     }
 
     if (mounted) {
       setState(() {});
     }
+
   }
 
   // 스트리밍 시작

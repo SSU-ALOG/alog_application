@@ -11,6 +11,8 @@ import 'user_login.dart';
 import 'user_info.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
+import 'message.dart';
+import 'safetyinfo.dart';
 
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
@@ -96,39 +98,31 @@ class _AppScreenState extends State<AppScreen> {
             leading: IconButton(
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
-                // 라이브 스트리밍 버튼 임시 구현
+                // 추가 기능 구현
                 showModalBottomSheet(
                   context: context,
                   builder: (BuildContext context) {
                     return Container(
-                      padding: EdgeInsets.all(20),
-                      height: 150,
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(context);  // 모달창 닫기
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LiveStreamStartScreen(),
-                                ),
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
                               );
                             },
-                            child: Text('Go to Live'),
+                            child: const Text('Go to Live'),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 8.0),
                           ElevatedButton(
                             onPressed: () {
-                              Navigator.pop(context);  // 모달창 닫기
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LiveStreamWatchScreen(),
-                                ),
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
                               );
                             },
-                            child: Text('Go to View'),
+                            child: const Text('Go to View'),
                           ),
                         ],
                       ),
@@ -208,7 +202,7 @@ class _AppScreenState extends State<AppScreen> {
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
 
-class NotificationsScreen extends StatelessWidget {
+/*class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
 
   @override
@@ -224,7 +218,7 @@ class SafetyInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(child: Text("안전 정보 화면"));
   }
-}
+}*/
 //
 // class IncidentScreen extends StatelessWidget {
 //   const IncidentScreen({Key? key}) : super(key: key);
