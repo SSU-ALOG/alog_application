@@ -7,6 +7,9 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'streaming_sender.dart';
+import 'streaming_viewer.dart';
+
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
 
@@ -292,7 +295,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     }
 
-    _applyClustering(currentZoomLevel);
+    if (currentZoomLevel < 14) {
+      _applyClustering(currentZoomLevel);
+    }
 
     setState(() {});
   }
@@ -1021,26 +1026,33 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           const SizedBox(height: 16),
 
           // 사진 또는 영상
-          Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-              image: imageUrl != null
-                  ? DecorationImage(
-                image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
-                fit: BoxFit.cover,
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+              );
+            },
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+                image: imageUrl != null
+                    ? DecorationImage(
+                  image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: imageUrl == null
+                  ? const Icon(
+                Icons.videocam,
+                size: 50,
+                color: Colors.grey,
               )
-                  : null,
+                  : null, // 이미지가 없는 경우
             ),
-            child: imageUrl == null
-                ? const Icon(
-              Icons.videocam,
-              size: 50,
-              color: Colors.grey,
-            )
-                : null, // 이미지가 없는 경우
           ),
           const SizedBox(height: 16),
 
@@ -1087,7 +1099,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
-                  // 여기서 추가적인 동작을 정의
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
+                  );
                 } : null, // 1km 이내일 때만 활성화, 그렇지 않으면 비활성화
                 icon: const Icon(Icons.live_tv, color: Colors.white),
                 label: const Text(
