@@ -11,6 +11,7 @@ import 'user_login.dart';
 import 'user_info.dart';
 import 'message.dart';
 import 'safetyinfo.dart';
+import 'accident_registration.dart';
 
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
@@ -96,7 +97,12 @@ class _AppScreenState extends State<AppScreen> {
             leading: IconButton(
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
-                // 추가 기능 구현
+                // 사건 등록 스크린
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AccidentRegistScreen()),
+                );
               },
             ),
             title: Text(
