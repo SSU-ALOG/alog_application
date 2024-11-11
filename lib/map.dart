@@ -604,6 +604,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     Overlay.of(context).insert(_clusterInfoOverlayEntry!);
   }
 
+  // 클러스터 마커 정보창 닫기
   void _closeClusterInfoOverlay() {
     if (_clusterInfoOverlayEntry != null) {
       _clusterInfoOverlayEntry!.remove();

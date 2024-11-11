@@ -1,10 +1,21 @@
 import 'dart:developer';
 
+import 'package:alog/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
 import 'map.dart';
+import 'incident.dart';
+import 'user_login.dart';
+import 'user_info.dart';
+import 'message.dart';
+import 'safetyinfo.dart';
+
+bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
+String? name;
+String? email;
+String? phoneNumber;
 
 void main() async {
   await initialize();
@@ -102,6 +113,16 @@ class _AppScreenState extends State<AppScreen> {
                 icon: const Icon(Icons.person, color: Colors.black),
                 onPressed: () {
                   // 프로필 기능 구현
+                  // Navigate to the user_login.dart page
+
+                  // Naver login session 존재 시. UserInfoScreen()으로 넘어가게끔
+
+                  // Naver login session 없을 시. UserLoginScreen()으로 넘어가게끔
+                  // 우선 이걸로 activity 넘어가게끔 함.
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => isLogin ? UserInfoScreen() : UserLoginScreen() ),
+                  );
                 },
               ),
             ],
@@ -148,29 +169,29 @@ class _AppScreenState extends State<AppScreen> {
 
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("문자 모아보기 화면"));
-  }
-}
-
-class SafetyInfoScreen extends StatelessWidget {
-  const SafetyInfoScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("안전 정보 화면"));
-  }
-}
-
-class IncidentScreen extends StatelessWidget {
-  const IncidentScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("사건·사고 화면"));
-  }
-}
+// class NotificationsScreen extends StatelessWidget {
+//   const NotificationsScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("문자 모아보기 화면"));
+//   }
+// }
+//
+// class SafetyInfoScreen extends StatelessWidget {
+//   const SafetyInfoScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("안전 정보 화면"));
+//   }
+// }
+//
+// class IncidentScreen extends StatelessWidget {
+//   const IncidentScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("사건·사고 화면"));
+//   }
+// }

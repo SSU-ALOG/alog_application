@@ -40,6 +40,15 @@ dependencies:
   permission_handler: ^11.3.1
   geolocator: ^13.0.1
 
+  # live streaming 관련
+  rtmp_broadcaster: ^2.2.6
+  path_provider: ^2.1.4
+  video_player: ^2.9.1
+  wakelock_plus: ^1.2.8
+
+  # 네이버 로그인 관련
+  flutter_naver_login: ^1.8.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
