@@ -13,6 +13,7 @@ import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
 import 'message.dart';
 import 'safetyinfo.dart';
+import 'accident_registration.dart';
 
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
@@ -33,7 +34,7 @@ Future<void> initialize() async {
 
   // 지도 초기화
   await NaverMapSdk.instance.initialize(
-      clientId: dotenv.env['NAVER_MAP_API_KEY'],
+      clientId: dotenv.env['NCP_MAP_API_KEY_ID'],
       onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
   );
 }
@@ -99,35 +100,40 @@ class _AppScreenState extends State<AppScreen> {
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
                 // 추가 기능 구현
-                showModalBottomSheet(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return Container(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
-                              );
-                            },
-                            child: const Text('Go to Live'),
-                          ),
-                          const SizedBox(height: 8.0),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
-                              );
-                            },
-                            child: const Text('Go to View'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                // showModalBottomSheet(
+                //   context: context,
+                //   builder: (BuildContext context) {
+                //     return Container(
+                //       padding: const EdgeInsets.all(16.0),
+                //       child: Column(
+                //         mainAxisSize: MainAxisSize.min,
+                //         children: [
+                //           ElevatedButton(
+                //             onPressed: () {
+                //               Navigator.of(context).push(
+                //                 MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
+                //               );
+                //             },
+                //             child: const Text('Go to Live'),
+                //           ),
+                //           const SizedBox(height: 8.0),
+                //           ElevatedButton(
+                //             onPressed: () {
+                //               Navigator.of(context).push(
+                //                 MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+                //               );
+                //             },
+                //             child: const Text('Go to View'),
+                //           ),
+                //         ],
+                //       ),
+                //     );
+                //   },
+                // 사건 등록 스크린
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const AccidentRegistScreen()),
                 );
               },
             ),
@@ -197,34 +203,3 @@ class _AppScreenState extends State<AppScreen> {
     );
   }
 }
-
-
-// 더미 위젯들
-// 본인 파트 따로 파일 만들어서 빼주면 감사링~
-
-/*class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("문자 모아보기 화면"));
-  }
-}
-
-class SafetyInfoScreen extends StatelessWidget {
-  const SafetyInfoScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("안전 정보 화면"));
-  }
-}*/
-//
-// class IncidentScreen extends StatelessWidget {
-//   const IncidentScreen({Key? key}) : super(key: key);
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Center(child: Text("사건·사고 화면"));
-//   }
-// }
