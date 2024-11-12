@@ -38,7 +38,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   NLatLng? _currentLocation;
   List<String> curLocationAddr = [];
   final ApiService apiService = ApiService();
-  final NLatLng defaultLocation = const NLatLng(37.58667, 126.97611); //  후에 수정
+  final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504); //  후에 수정
   String repArea = '';
 
 
@@ -81,8 +81,8 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         // dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        // _currentLocation = NLatLng(position.latitude, position.longitude);
-        _currentLocation = defaultLocation;
+        _currentLocation = NLatLng(position.latitude, position.longitude);
+        // _currentLocation = defaultLocation;
       });
     } catch (e) {
       setState(() {
@@ -152,6 +152,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(

@@ -49,6 +49,9 @@ dependencies:
   # 네이버 로그인 관련
   flutter_naver_login: ^1.8.0
 
+  # 좌표 주소 변환 관련
+#  naver_map_plugin: ^0.9.6
+  http: ^0.13.3
 
 dev_dependencies:
   flutter_test:

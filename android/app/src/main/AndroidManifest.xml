@@ -48,6 +48,9 @@
             android:name="com.naver.sdk.clientName"
             android:value="@string/client_name" />
 
+<!--        <meta-data-->
+<!--            android:name="com.naver.maps.map.CLIENT_ID"-->
+<!--            android:value="oiu45nx0lq" />-->
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
