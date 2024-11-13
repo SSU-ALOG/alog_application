@@ -101,34 +101,35 @@ class _AppScreenState extends State<AppScreen> {
               onPressed: () {
                 // 추가 기능 구현
                 // showModalBottomSheet(
-                //   context: context,
-                //   builder: (BuildContext context) {
-                //     return Container(
-                //       padding: const EdgeInsets.all(16.0),
-                //       child: Column(
-                //         mainAxisSize: MainAxisSize.min,
-                //         children: [
-                //           ElevatedButton(
-                //             onPressed: () {
-                //               Navigator.of(context).push(
-                //                 MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
-                //               );
-                //             },
-                //             child: const Text('Go to Live'),
-                //           ),
-                //           const SizedBox(height: 8.0),
-                //           ElevatedButton(
-                //             onPressed: () {
-                //               Navigator.of(context).push(
-                //                 MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
-                //               );
-                //             },
-                //             child: const Text('Go to View'),
-                //           ),
-                //         ],
-                //       ),
-                //     );
-                //   },
+                //     context: context,
+                //     builder: (BuildContext context) {
+                //   return Container(
+                //     padding: const EdgeInsets.all(16.0),
+                //     child: Column(
+                //       mainAxisSize: MainAxisSize.min,
+                //       children: [
+                //         ElevatedButton(
+                //           onPressed: () {
+                //             Navigator.of(context).push(
+                //               MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
+                //             );
+                //           },
+                //           child: const Text('Go to Live'),
+                //         ),
+                //         const SizedBox(height: 8.0),
+                //         ElevatedButton(
+                //           onPressed: () {
+                //             Navigator.of(context).push(
+                //               MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+                //             );
+                //           },
+                //           child: const Text('Go to View'),
+                //         ),
+                //       ],
+                //     ),
+                //   );
+                // },
+                // );
                 // 사건 등록 스크린
                 Navigator.push(
                   context,

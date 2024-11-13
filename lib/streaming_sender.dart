@@ -305,9 +305,9 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     double chatHeight = screenHeight / 3; // 채팅 영역 높이 설정
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios, color: Colors.black),
@@ -345,7 +345,6 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                 color: Colors.black,
                 border: Border.all(
                   color: Colors.grey,
-                  width: 3.0,
                 ),
               ),
               child: Padding(
@@ -461,7 +460,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
           ),
           Positioned(
             right: 10,
-            top: 10,
+            top: 70,
             child: Column(
               children: [
                 IconButton(
@@ -499,6 +498,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
   // 카메라 초기화 후 미리보기
   Widget _cameraPreviewWidget() {
+    //double aspectRatio = 3 / 4; // 원하는 비율로 설정
+
     if (controller == null || !isControllerInitialized) {
       return const Text(
         'Loading the camera',
@@ -512,6 +513,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
     return AspectRatio(
       aspectRatio: controller!.value.aspectRatio,
+      //aspectRatio: aspectRatio,
       child: CameraPreview(controller!),
     );
   }
