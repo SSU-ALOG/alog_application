@@ -21,6 +21,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   final DraggableScrollableController _draggableController = DraggableScrollableController();
   final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504);
+  final FocusNode _searchFocusNode = FocusNode();
   final double defaultZoomLevel = 14;
   final List<NMarker> _markers = [];
   final List<String> filterNames = [
@@ -51,10 +52,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _locationPermissionGranted = false;
   bool _isExpanded = false;
   bool _isDetailView = false;
+  bool _isSearching = false;
   NLatLng? _currentLocation;
   Map<String, dynamic>? _selectedContent;
+  List<NMarker> _searchedMarkers = [];
+  List<NMarker> _filteredMarkers = [];
   List<NMarker> _clusterMarkers = [];
-  List<Map<String, dynamic>> _filteredContentList = [];
+  List<Map<String, dynamic>> _currentContentList = [];
   List<Map<String, dynamic>> _contentList = [
     {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
     {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
@@ -209,6 +213,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       });
 
       _markers.add(marker);
+      _searchedMarkers.add(marker);
+      _filteredMarkers.add(marker);
       controller.addOverlay(marker);
     }
   }
@@ -225,7 +231,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _contentList.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
 
     setState(() {
-      _filteredContentList = List.from(_contentList);
+      _currentContentList = List.from(_contentList);
     });
   }
 
@@ -283,15 +289,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     final position = await controller.getCameraPosition();
     final currentZoomLevel = position.zoom;
 
-    _filteredContentList.clear();
+    _currentContentList.clear();
+    _filteredMarkers.clear();
 
-    for (var marker in _markers) {
+    for (var marker in _searchedMarkers) {
       final matchingContent = _contentList.firstWhere((content) => content['title'] == marker.info.id);
       final isVisible = _selectedFilters.contains('ALL') || _selectedFilters.contains(matchingContent['category']);
       marker.setIsVisible(isVisible);
 
       if (isVisible) {
-        _filteredContentList.add(matchingContent);
+        _currentContentList.add(matchingContent);
+        _filteredMarkers.add(marker);
       }
     }
 
@@ -305,9 +313,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 검색
   void _performSearch() {
     setState(() {
+      _isSearching = true;
+      _searchFocusNode.unfocus();
       _searchKeyword = _searchController.text.toLowerCase().trim();
 
-      _filteredContentList = _contentList.where((content) {
+      _currentContentList = _contentList.where((content) {
         final title = content['title']?.toLowerCase() ?? '';
         final category = content['category']?.toLowerCase() ?? '';
         final description = content['description']?.toLowerCase() ?? '';
@@ -317,8 +327,20 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             description.contains(_searchKeyword);
       }).toList();
 
-      // dev.log("Filtered content list: $_filteredContentList", name: 'Search');
+      // dev.log("Current content list: $_currentContentList", name: 'Search');
 
+      _updateMarkersForSearch();
+    });
+  }
+
+  // 검색 초기화
+  void _initSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchKeyword = '';
+      _isSearching = false;
+
+      _currentContentList = List.from(_contentList);
       _updateMarkersForSearch();
     });
   }
@@ -329,17 +351,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       marker.setIsVisible(false);
     }
 
-    for (var content in _filteredContentList) {
-      final matchingMarker = _markers.where(
+    _searchedMarkers.clear();
+    for (var content in _currentContentList) {
+      final matchingMarkers = _markers.where(
               (marker) => marker.info.id == content['title']
       ).toList();
 
-      if (matchingMarker.isNotEmpty) {
-        matchingMarker.forEach((marker) {
-          marker.setIsVisible(true);
-        });
-      }
+      _searchedMarkers.addAll(matchingMarkers);
     }
+    _updateMarkers();
   }
 
   // 지도 방향 정렬
@@ -379,14 +399,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
     // 줌 레벨 14 이상 시 클러스터링 해제
     if (zoomLevel >= 14) {
-      for (var marker in _markers) {
+      for (var marker in _filteredMarkers) {
         marker.setIsVisible(true);
       }
       return;
     }
 
     // 기본 마커 비활성화
-    for (var marker in _markers) {
+    for (var marker in _filteredMarkers) {
       marker.setIsVisible(false);
     }
 
@@ -452,9 +472,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 클러스터 생성
   List<Cluster> _createClusters(double clusterDistance) {
     List<Cluster> clusters = [];
-    for (var marker in _markers) {
-      if (!marker.isVisible) continue;
-
+    for (var marker in _filteredMarkers) {
       bool isClustered = false;
       for (var cluster in clusters) {
         if (_calculateDistance(cluster.position, marker.position) < clusterDistance) {
@@ -880,16 +898,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ),
         child: TextField(
           controller: _searchController,
+          focusNode: _searchFocusNode,
           decoration: InputDecoration(
             prefix: const SizedBox(width: 20),
             hintText: '검색어를 입력해주세요',
             suffixIcon: IconButton(
-              icon: const Icon(Icons.search, color: Colors.grey),
-              onPressed: _performSearch,
+              icon: Icon(
+                _isSearching ? Icons.clear : Icons.search,
+                color: Colors.grey,
+              ),
+              onPressed: _isSearching ? _initSearch : _performSearch,
             ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
+          onChanged: (value) {
+            if (value.isEmpty) _initSearch();
+          },
           onSubmitted: (value) => _performSearch(),
         ),
       ),
@@ -900,9 +925,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   Widget _buildContentList(ScrollController scrollController) {
     return ListView.builder(
       controller: scrollController,
-      itemCount: _filteredContentList.length,
+      itemCount: _currentContentList.length,
       itemBuilder: (context, index) {
-        final content = _filteredContentList[index];
+        final content = _currentContentList[index];
         double distance = content['distance'] ?? 0;
 
         return Padding(
