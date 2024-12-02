@@ -123,8 +123,8 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       var area3 = curAddr['results'][1]['region']['area3']['name'];
       var area4 = curAddr['results'][1]['region']['area4']['name'];
 
-      repArea= area1;
-      print("area1: " + area1);
+      repArea= '$area1 $area2 $area3';
+      print("repArea: " + repArea);
 
       // API 호출 결과를 TextField에 반영
       setState(() {
