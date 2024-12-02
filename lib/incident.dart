@@ -1,8 +1,13 @@
 import 'dart:async';
-import 'dart:developer';
+import 'dart:developer' as dev;
 
 import 'package:alog/main.dart';
+import 'package:alog/services/api_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'models/issue.dart';
+import 'services/api_service.dart';
 
 // dummy data
 final List<Map<String, String>> events = [
@@ -14,7 +19,6 @@ final List<Map<String, String>> events = [
   {'status': '긴급', 'date': '2024-10-10', 'description': ' event'},
   {'status': '진행중', 'date': '2024-10-03', 'description': ' event'},
 ];
-
 
 // Disaster Categories
 const List<String> disasterCategories = [
@@ -96,8 +100,19 @@ class IncidentScreen extends StatefulWidget {
 }
 
 class _IncidentScreenState extends State<IncidentScreen> {
-  Set<String> _selectedDisaster = {'ALL'};
+  // Issue data
+  late Future<List<Issue>> futureIssues;
+  final ApiService apiService = ApiService(); // ApiService 인스턴스 생성
 
+  @override
+  void initState() {
+    super.initState();
+
+    // ApiService를 통해 fetchRecentIssues 호출
+    futureIssues = apiService.fetchRecentIssues();
+  }
+
+  Set<String> _selectedDisaster = {'ALL'};
   void _disasterToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -123,7 +138,6 @@ class _IncidentScreenState extends State<IncidentScreen> {
   }
 
   Set<String> _selectedDisasterStatus = {'ALL'};
-
   void _disasterStatusToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -241,80 +255,43 @@ class _IncidentScreenState extends State<IncidentScreen> {
 
           // Accidents list
           Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.0), // 좌우 10px 여백 추가
-              child: ListView(
-                children: [
-                  for (var event in sortEventsByDate(events)) // 정렬된 이벤트 리스트 순회
-                    Builder(
-                      builder: (context) {
+            child: FutureBuilder<List<Issue>>(
+              future: fetchAndSortIssues(), // 정렬된 issue list 가져오기
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(
+                      child: Text('Failed to load issues: ${snapshot.error}'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(child: Text('No issues available'));
+                } else {
+                  final issues = snapshot.data!;
+                  for (var issue in issues) {
+                    dev.log('Issue in UI: ${issue.toJson()}', name: 'FutureBuilder');
+                  }
 
-                        // 상태에 따라 데이터 가져오기
-                        final colorSet = getDisasterColorSet(event['status']!);
-                        final icon = getDisasterIcon(event['status']!);
-                        return EventCard(
-                          status: event['status']!,
-                          date: event['date']!,
-                          description: event['description']!,
-                          backgroundColor: colorSet.shade,
-                          iconColor: colorSet.main,
-                          icon: icon,
-                        );
-                      },
-                    ),
+                  return ListView.builder(
+                    itemCount: issues.length,
+                    itemBuilder: (context, index) {
+                      final issue = issues[index];
+                      final colorSet = getDisasterColorSet(issue.status);
+                      final icon = getDisasterIcon(issue.status);
 
-                  // EventCard(
-                  //   status: '진행 중',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFFFF4E4),
-                  //   iconColor: Color(0xFFFFB37C),
-                  //   icon: disasterStatusIcons['진행중'],
-                  // ),
-                  // EventCard(
-                  //   status: '상황 종료',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFE7F4E8),
-                  //   iconColor: Color(0xFF3AC0A0),
-                  //   icon: disasterStatusIcons['상황종료'],
-                  // ),
-                  // EventCard(
-                  //   status: '진행 중',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFFFF4E4),
-                  //   iconColor: Color(0xFFFFB37C),
-                  //   icon: disasterStatusIcons['진행중'],
-                  // ),
-                  // EventCard(
-                  //   status: '상황 종료',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFE7F4E8),
-                  //   iconColor: Color(0xFF3AC0A0),
-                  //   icon: disasterStatusIcons['상황종료'],
-                  // ),
-                  // EventCard(
-                  //   status: '긴급 재난',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFFFE2E5),
-                  //   iconColor: Color(0xFFFF6969),
-                  //   icon: disasterStatusIcons['긴급'],
-                  // ),
-                  // EventCard(
-                  //   status: '긴급 재난',
-                  //   date: '2024.10.03',
-                  //   description: 'Description. Lorem ipsum dolor sit amet.',
-                  //   backgroundColor: Color(0xFFFFE2E5),
-                  //   iconColor: Color(0xFFFF6969),
-                  //   icon: disasterStatusIcons['긴급'],
-                  // ),
-                ],
-              ),
-            ), // Container
-          )
+                      return EventCard(
+                        title: issue.title,
+                        date: issue.date.toIso8601String(),
+                        description: issue.description ?? 'none',
+                        backgroundColor: colorSet.shade,
+                        iconColor: colorSet.main,
+                        icon: icon,
+                      );
+                    },
+                  );
+                }
+              },
+            ),
+          ),
         ]));
   }
 }
@@ -455,30 +432,43 @@ class _RegionDropDownState extends State<RegionDropDown> {
 }
 
 // set default event design
-ColorSet getDisasterColorSet(String status){
-  return disasterStatusColors[status] ?? ColorSet(
-    main: Colors.grey,
-    shade: Colors.grey.shade200,
-  );
+ColorSet getDisasterColorSet(String status) {
+  return disasterStatusColors[status] ??
+      ColorSet(
+        main: Colors.grey,
+        shade: Colors.grey.shade200,
+      );
 }
 
-IconData getDisasterIcon(String status){
+IconData getDisasterIcon(String status) {
   return disasterStatusIcons[status] ?? Icons.error_rounded;
 }
 
-// sort event using date
-List<Map<String, String>> sortEventsByDate(List<Map<String, String>> event){
-  events.sort((a, b){
-    DateTime dateA = DateTime.parse(a['date']!);
-    DateTime dateB = DateTime.parse(b['date']!);
-    return dateB.compareTo(dateA); // 최신순 정렬
-  });
+// call apiservice for fetching issue data
+Future<List<Issue>> fetchAndSortIssues() async {
+  final apiService = ApiService();
+  List<Issue> issues = await apiService.fetchRecentIssues();
 
-  return events;
+  // 가져온 데이터를 로그로 출력
+  for (var issue in issues) {
+    dev.log('Fetched Issue: ${issue.toJson()}', name: 'fetchAndSortIssues');
+  }
+
+  // sort
+  return sortIssuesByDate(issues);
+}
+
+// sort issues using date
+List<Issue> sortIssuesByDate(List<Issue> issues) {
+  List<Issue> sortedIssues = List.from(issues);
+  sortedIssues.sort((a, b) {
+    return b.date.compareTo(a.date);
+  });
+  return sortedIssues;
 }
 
 class EventCard extends StatelessWidget {
-  final String status;
+  final String title;
   final String date;
   final String description;
   final Color backgroundColor;
@@ -487,15 +477,14 @@ class EventCard extends StatelessWidget {
 
   final double iconSize;
 
-  const EventCard({
-    required this.status,
-    required this.date,
-    required this.description,
-    required this.backgroundColor,
-    required this.iconColor,
-    required this.icon,
-    this.iconSize = 30.0
-  });
+  const EventCard(
+      {required this.title,
+      required this.date,
+      required this.description,
+      required this.backgroundColor,
+      required this.iconColor,
+      required this.icon,
+      this.iconSize = 30.0});
 
   @override
   Widget build(BuildContext context) {
@@ -508,18 +497,14 @@ class EventCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: iconColor,
-            size: iconSize
-          ),
+          Icon(icon, color: iconColor, size: iconSize),
           SizedBox(width: 16.0),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  status,
+                  title,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16.0,
