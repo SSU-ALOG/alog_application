@@ -10,15 +10,15 @@ import 'models/issue.dart';
 import 'services/api_service.dart';
 
 // dummy data
-final List<Map<String, String>> events = [
-  {'status': '진행중', 'date': '2024-10-04', 'description': ' event'},
-  {'status': '상황종료', 'date': '2024-10-03', 'description': 'event'},
-  {'status': '상황종료', 'date': '2024-10-02', 'description': ' event'},
-  {'status': '진행중', 'date': '2024-10-01', 'description': ' event'},
-  {'status': '긴급', 'date': '2024-10-01', 'description': ' event'},
-  {'status': '긴급', 'date': '2024-10-10', 'description': ' event'},
-  {'status': '진행중', 'date': '2024-10-03', 'description': ' event'},
-];
+// final List<Map<String, String>> events = [
+//   {'status': '진행중', 'date': '2024-10-04', 'description': ' event'},
+//   {'status': '상황종료', 'date': '2024-10-03', 'description': 'event'},
+//   {'status': '상황종료', 'date': '2024-10-02', 'description': ' event'},
+//   {'status': '진행중', 'date': '2024-10-01', 'description': ' event'},
+//   {'status': '긴급', 'date': '2024-10-01', 'description': ' event'},
+//   {'status': '긴급', 'date': '2024-10-10', 'description': ' event'},
+//   {'status': '진행중', 'date': '2024-10-03', 'description': ' event'},
+// ];
 
 // Disaster Categories
 const List<String> disasterCategories = [
@@ -280,6 +280,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
 
                       return EventCard(
                         title: issue.title,
+                        addr: issue.addr,
                         date: issue.date.toIso8601String(),
                         description: issue.description ?? 'none',
                         backgroundColor: colorSet.shade,
@@ -469,6 +470,7 @@ List<Issue> sortIssuesByDate(List<Issue> issues) {
 
 class EventCard extends StatelessWidget {
   final String title;
+  final String addr;
   final String date;
   final String description;
   final Color backgroundColor;
@@ -479,6 +481,7 @@ class EventCard extends StatelessWidget {
 
   const EventCard(
       {required this.title,
+      required this.addr,
       required this.date,
       required this.description,
       required this.backgroundColor,
@@ -509,6 +512,11 @@ class EventCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 16.0,
                   ),
+                ),
+                SizedBox(height: 4.0),
+                Text(
+                  '$addr',
+                  style: TextStyle(color: Colors.grey),
                 ),
                 SizedBox(height: 4.0),
                 Text(
