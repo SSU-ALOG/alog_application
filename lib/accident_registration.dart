@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:alog/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -51,7 +53,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       return;
     }
 
-    final issue = Issue(
+    final issue = Issue.fromUserInput(
       title: _titleController.text,
       category: _selectedCategory ?? '기타',
       description: _descriptionController.text,
@@ -60,9 +62,11 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       addr: repArea,
     );
 
-    print(issue.toJson()); // 전송 전 데이터 확인
+    dev.log('issue: ${issue.toJson()}', name: '_submitIssue');
 
     final success = await apiService.createIssue(issue);
+
+    dev.log('success: ${success}', name:'_submitIssue');
 
     if (success) {
       ScaffoldMessenger.of(context)
@@ -270,25 +274,27 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
 
             // 등록 버튼
             Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  // 등록 기능
-                  await _submitIssue();
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.85, // 화면 너비의 80%로 설정
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // 등록 기능
+                    await _submitIssue();
 
-                  // 홈화면 전환
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF6969),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 160, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
+                    // 홈화면 전환
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6969),
+                    padding: const EdgeInsets.symmetric(vertical: 15), // 세로 padding만 설정
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  '등록',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  child: const Text(
+                    '등록',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ),
             ),
