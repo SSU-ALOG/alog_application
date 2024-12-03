@@ -5,10 +5,10 @@ class CustomTabView extends StatelessWidget {
   final List<Widget> tabContents; // Tab 내용 -> 탭 선택 시 뜨는 화면
 
   const CustomTabView({
-    Key? key,
+    super.key,
     required this.tabTitles,
     required this.tabContents,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +16,10 @@ class CustomTabView extends StatelessWidget {
       children: <Widget>[
         TabBar(
           tabs: tabTitles.map((title) => Tab(text: title)).toList(),
-          indicator: UnderlineTabIndicator(
+          indicator:  const UnderlineTabIndicator(
             borderSide: BorderSide(width: 2.0, color: Colors.black), // 인디케이터 커스터마이징
           ),
-          labelStyle: TextStyle(
+          labelStyle: const TextStyle(
               color: Colors.black,
               fontWeight:FontWeight.bold
           ), // 선택된 탭 텍스트 색상

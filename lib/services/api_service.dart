@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/issue.dart';
@@ -12,12 +14,14 @@ class ApiService {
     final headers = {'Content-Type': 'application/json'};
     final body = jsonEncode(issue.toJson());
 
+    dev.log('${issue}', name: 'ApiService');
+
     final response = await http.post(url, headers: headers, body: body);
 
     if (response.statusCode == 200) {
       return true;
     } else {
-      print('Failed to submit issue: ${response.statusCode}, ${response.body}');
+      dev.log('Failed to submit issue: ${response.statusCode}, ${response.body}', name: 'ApiService');
       return false;
     }
   }

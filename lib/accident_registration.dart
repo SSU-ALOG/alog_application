@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:alog/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -38,7 +40,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   NLatLng? _currentLocation;
   List<String> curLocationAddr = [];
   final ApiService apiService = ApiService();
-  final NLatLng defaultLocation = const NLatLng(37.58667, 126.97611); //  후에 수정
+  final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504); //  후에 수정
   String repArea = '';
 
 
@@ -60,9 +62,11 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       addr: repArea,
     );
 
-    print(issue.toJson()); // 전송 전 데이터 확인
+    dev.log('issue: ${issue.toJson()}', name: '_submitIssue');
 
     final success = await apiService.createIssue(issue);
+
+    dev.log('success: ${success}', name:'_submitIssue');
 
     if (success) {
       ScaffoldMessenger.of(context)
@@ -81,8 +85,8 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         // dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        // _currentLocation = NLatLng(position.latitude, position.longitude);
-        _currentLocation = defaultLocation;
+        _currentLocation = NLatLng(position.latitude, position.longitude);
+        // _currentLocation = defaultLocation;
       });
     } catch (e) {
       setState(() {
@@ -152,6 +156,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
@@ -269,25 +274,27 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
 
             // 등록 버튼
             Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  // 등록 기능
-                  await _submitIssue();
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.85, // 화면 너비의 80%로 설정
+                child: ElevatedButton(
+                  onPressed: () async {
+                    // 등록 기능
+                    await _submitIssue();
 
-                  // 홈화면 전환
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFFF6969),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 160, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(13),
+                    // 홈화면 전환
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF6969),
+                    padding: const EdgeInsets.symmetric(vertical: 15), // 세로 padding만 설정
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  '등록',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  child: const Text(
+                    '등록',
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                 ),
               ),
             ),

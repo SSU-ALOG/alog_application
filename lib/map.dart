@@ -7,6 +7,9 @@ import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'streaming_sender.dart';
+import 'streaming_viewer.dart';
+
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
 
@@ -15,19 +18,11 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
-  Set<String> _selectedFilters = {'ALL'};
-  bool _locationPermissionGranted = false;
-  NLatLng? _currentLocation;
-  // bool _isPressed = false;
-  bool _isExpanded = false;
-  // Color _dragBarColor = Colors.grey[300]!;
-  bool _isDetailView = false;
-  Map<String, dynamic>? _selectedContent;
-
-  final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504);
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   final DraggableScrollableController _draggableController = DraggableScrollableController();
-
+  final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504);
+  final double defaultZoomLevel = 14;
+  final List<NMarker> _markers = [];
   final List<String> filterNames = [
     'ALL',
     '범죄',
@@ -41,53 +36,45 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     '디지털 서비스',
     '기타',
   ];
-  final List<Map<String, dynamic>> _contentList = [
-    {"title": "사건 1", "category": "범죄", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4900895, 126.959504), "view": 10},
-    {"title": "사건 2", "category": "화재", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4980895, 126.959504), "view": 50},
-    {"title": "사건 3", "category": "건강위해", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4920895, 126.955504), "view": 100},
-    {"title": "사건 4", "category": "안전사고", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4950895, 126.953504), "view": 150},
-    {"title": "사건 5", "category": "자연재해", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4970895, 126.951504), "view": 200},
 
-    // 1km 바깥에 있는 지점들 추가
-    {"title": "사건 6", "category": "범죄", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4850895, 126.945504), "view": 5},  // 1.5km 바깥
-    {"title": "사건 7", "category": "화재", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.5030895, 126.960504), "view": 30}, // 1.2km 바깥
-    {"title": "사건 8", "category": "건강위해", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4990895, 126.940504), "view": 70}, // 2.0km 바깥
-    {"title": "사건 9", "category": "안전사고", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4800895, 126.980504), "view": 120}, // 3.0km 바깥
-    {"title": "사건 10", "category": "자연재해", "description": "현재 라이브 스트리밍 수: 0", "location": NLatLng(37.4700895, 126.970504), "view": 90}, // 3.5km 바깥
+  late double screenHeight;
+  late double extraHeight;
+  late double minHeightRatio;
+  late double maxHeightRatio;
+
+  OverlayEntry? _clusterInfoOverlayEntry;
+  TextEditingController _searchController = TextEditingController();
+  Set<String> _selectedFilters = {'ALL'};
+  String _searchKeyword = '';
+  double _zoomLevel = 14.0;
+  double _mapRotation = 0.0;
+  bool _locationPermissionGranted = false;
+  bool _isExpanded = false;
+  bool _isDetailView = false;
+  NLatLng? _currentLocation;
+  Map<String, dynamic>? _selectedContent;
+  List<NMarker> _clusterMarkers = [];
+  List<Map<String, dynamic>> _filteredContentList = [];
+  List<Map<String, dynamic>> _contentList = [
+    {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
+    {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
+    {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
+    {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
+    {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
+    {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
+    {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
+    {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
+    {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
+    {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
   ];
-
 
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
-    _initializeDraggableController();
   }
 
-  void _initializeDraggableController() {
-    _draggableController.addListener(() {
-      if (!_draggableController.isAttached) return;
-
-      // 드래그가 끝날 때 위치에 따라 자동으로 열거나 닫기
-      if (_draggableController.size > 0.1 && !_isExpanded) {
-        _draggableController.animateTo(
-          0.82,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-        _isExpanded = true;
-      } else if (_draggableController.size <= 0.1 && _isExpanded) {
-        _draggableController.animateTo(
-          0.05,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-        _isExpanded = false;
-      }
-    });
-  }
-
-  // 위치 권한 요청 및 현재 위치 설정
+  // 위치 권한 요청
   Future<void> _requestLocationPermission() async {
     try {
       PermissionStatus permissionStatus = await Permission.locationWhenInUse.status;
@@ -128,8 +115,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        // _currentLocation = NLatLng(position.latitude, position.longitude);
-        _currentLocation = defaultLocation;
+        _currentLocation = NLatLng(position.latitude, position.longitude);
+        // _currentLocation = defaultLocation;
       });
     } catch (e) {
       setState(() {
@@ -147,12 +134,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         NCameraUpdate.fromCameraPosition(
           NCameraPosition(
             target: _currentLocation!,
-            zoom: 14,
+            zoom: defaultZoomLevel,
           ),
         ),
       );
       _addCurrentLocationMarker();
       _addContentMarkers();
+      _calculateDistances();
     }
   }
 
@@ -180,49 +168,89 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 콘텐츠 마커 추가
   void _addContentMarkers() async {
     final NaverMapController controller = await mapControllerCompleter.future;
+    _markers.clear();
 
     for (var content in _contentList) {
-      final location = content['location'] as NLatLng;
+      final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       final int view = content['view'] ?? 10;
 
       double markerSize = 20 + sqrt(view);
 
-      // 마커 생성
       final marker = NMarker(
-        id: content['title'], // 마커 ID를 고유하게 설정
+        id: content['title'], // id 값으로 변경해야 할듯
         position: location,
         icon: await NOverlayImage.fromWidget(
           context: context,
-          size: Size(markerSize, markerSize), // view 값에 따른 크기 설정
+          size: Size(markerSize, markerSize),
           widget: _buildDefaultMarker(),
         ),
-        anchor: NPoint(0.5, 0.5), // 마커의 중심점을 기준으로 위치 설정
+        anchor: NPoint(0.5, 0.5),
       );
 
+      marker.setOnTapListener((NMarker tappedMarker) {
+        setState(() {
+          _selectedContent = content;
+          _isDetailView = true;
+        });
+
+        Future.delayed(const Duration(milliseconds: 50), () {
+          _draggableController.animateTo(
+            maxHeightRatio,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          ).then((_) {
+            dev.log("DraggableScrollableSheet expanded by marker id: ${tappedMarker.info.id}.", name: "NMarker");
+          }).catchError((error) {
+            dev.log("Failed to animate DraggableScrollableSheet: $error", name: "NMarker");
+          });
+        });
+
+        return true;
+      });
+
+      _markers.add(marker);
       controller.addOverlay(marker);
     }
   }
 
-  // 지도 중심과의 거리 계산 함수 (단위: 미터)
+  // 현재 위치에서 각 마커까지의 거리 정보 추가
+  void _calculateDistances() {
+    for (var content in _contentList) {
+      final NLatLng location = NLatLng(content['latitude'], content['longitude']);
+      double distance = _calculateDistance(_currentLocation!, location);
+      content['distance'] = distance;
+    }
+
+    // 거리 기준으로 오름차순 정렬
+    _contentList.sort((a, b) => (a['distance'] as double).compareTo(b['distance'] as double));
+
+    setState(() {
+      _filteredContentList = List.from(_contentList);
+    });
+  }
+
+  // 현재 위치와의 거리 계산 (단위: 킬로미터)
   double _calculateDistance(NLatLng start, NLatLng end) {
-    const earthRadius = 6371; // 지구 반경 (단위: km)
+    const earthRadius = 6371; // 지구 반경 (km)
 
     double dLat = _degreesToRadians(end.latitude - start.latitude);
     double dLon = _degreesToRadians(end.longitude - start.longitude);
 
-    double a = (sin(dLat / 2) * sin(dLat / 2)) +
-        (cos(_degreesToRadians(start.latitude)) * cos(_degreesToRadians(end.latitude)) * sin(dLon / 2) * sin(dLon / 2));
-    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    double distance = earthRadius * c * 1000; // km를 meter로 변환
+    double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(start.latitude)) *
+            cos(_degreesToRadians(end.latitude)) *
+            sin(dLon / 2) * sin(dLon / 2);
 
-    return distance;
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c; // 거리(km) 반환
   }
 
-  // 각도를 라디안으로 변환하는 함수
+  // 각도를 라디안으로 변환
   double _degreesToRadians(double degrees) {
     return degrees * pi / 180;
   }
 
+  // 필터
   void _toggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -244,11 +272,358 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       if (_selectedFilters.isEmpty) {
         _selectedFilters.add('ALL');
       }
+
+      _updateMarkers();
     });
+  }
+
+  // 필터에 따른 마커 업데이트
+  void _updateMarkers() async {
+    final controller = await mapControllerCompleter.future;
+    final position = await controller.getCameraPosition();
+    final currentZoomLevel = position.zoom;
+
+    _filteredContentList.clear();
+
+    for (var marker in _markers) {
+      final matchingContent = _contentList.firstWhere((content) => content['title'] == marker.info.id);
+      final isVisible = _selectedFilters.contains('ALL') || _selectedFilters.contains(matchingContent['category']);
+      marker.setIsVisible(isVisible);
+
+      if (isVisible) {
+        _filteredContentList.add(matchingContent);
+      }
+    }
+
+    if (currentZoomLevel < 14) {
+      _applyClustering(currentZoomLevel);
+    }
+
+    setState(() {});
+  }
+
+  // 검색
+  void _performSearch() {
+    setState(() {
+      _searchKeyword = _searchController.text.toLowerCase().trim();
+
+      _filteredContentList = _contentList.where((content) {
+        final title = content['title']?.toLowerCase() ?? '';
+        final category = content['category']?.toLowerCase() ?? '';
+        final description = content['description']?.toLowerCase() ?? '';
+
+        return title.contains(_searchKeyword) ||
+            category.contains(_searchKeyword) ||
+            description.contains(_searchKeyword);
+      }).toList();
+
+      // dev.log("Filtered content list: $_filteredContentList", name: 'Search');
+
+      _updateMarkersForSearch();
+    });
+  }
+
+  // 검색에 따른 마커 업데이트
+  void _updateMarkersForSearch() async {
+    for (var marker in _markers) {
+      marker.setIsVisible(false);
+    }
+
+    for (var content in _filteredContentList) {
+      final matchingMarker = _markers.where(
+              (marker) => marker.info.id == content['title']
+      ).toList();
+
+      if (matchingMarker.isNotEmpty) {
+        matchingMarker.forEach((marker) {
+          marker.setIsVisible(true);
+        });
+      }
+    }
+  }
+
+  // 지도 방향 정렬
+  void _resetMapRotation() async {
+    final NaverMapController controller = await mapControllerCompleter.future;
+    NCameraPosition cameraPosition = await controller.getCameraPosition();
+    NLatLng center = cameraPosition.target;
+    double zoomLevel = cameraPosition.zoom;
+
+    controller.updateCamera(
+      NCameraUpdate.fromCameraPosition(
+        NCameraPosition(
+          target: center,
+          bearing: 0.0,
+          zoom: zoomLevel,
+        ),
+      ),
+    );
+    setState(() {
+      _mapRotation = 0.0;
+    });
+  }
+
+  // 클러스터링
+  void _applyClustering(double zoomLevel) async {
+    final NaverMapController controller = await mapControllerCompleter.future;
+    double clusterDistance = _getClusterDistance(zoomLevel);
+    List<Cluster> clusters = _createClusters(clusterDistance);
+
+    dev.log("current zoom level: $zoomLevel", name: "_applyClustering");
+
+    // 기존 클러스터 마커 삭제
+    for (var clusterMarker in _clusterMarkers) {
+      controller.deleteOverlay(clusterMarker.info);
+    }
+    _clusterMarkers.clear();
+
+    // 줌 레벨 14 이상 시 클러스터링 해제
+    if (zoomLevel >= 14) {
+      for (var marker in _markers) {
+        marker.setIsVisible(true);
+      }
+      return;
+    }
+
+    // 기본 마커 비활성화
+    for (var marker in _markers) {
+      marker.setIsVisible(false);
+    }
+
+    // 클러스터링 적용
+    for (var cluster in clusters) {
+      if (cluster.markers.length == 1) {
+        cluster.markers.first.setIsVisible(true);
+      } else {
+        final clusterCenter = cluster.position;
+        double clusterSize = 40 + sqrt(cluster.markers.length) * 10;
+
+        final clusterMarker = NMarker(
+          id: 'cluster_${clusterCenter.latitude}_${clusterCenter.longitude}',
+          position: clusterCenter,
+          icon: await NOverlayImage.fromWidget(
+            context: context,
+            size: Size(clusterSize, clusterSize),
+            widget: _buildClusterMarker(cluster.markers.length, clusterSize),
+          ),
+          anchor: NPoint(0.5, 0.5),
+        );
+
+        // 클릭 리스너
+        clusterMarker.setOnTapListener((NMarker tappedMarker) async {
+          final controller = await mapControllerCompleter.future;
+
+          final adjustedPosition = NLatLng(
+            cluster.position.latitude + (0.004 * (15 - zoomLevel)),
+            cluster.position.longitude,
+          );
+
+          await controller.updateCamera(
+            NCameraUpdate.fromCameraPosition(
+              NCameraPosition(
+                target: adjustedPosition,
+                zoom: zoomLevel,
+              ),
+            ),
+          );
+
+          final NPoint screenPosition = await controller.latLngToScreenLocation(cluster.position);
+          final Offset offsetPosition = Offset(screenPosition.x.toDouble(), screenPosition.y.toDouble());
+          _showClusterInfoOverlay(cluster, offsetPosition, clusterSize);
+
+          return true;
+        });
+
+        _clusterMarkers.add(clusterMarker);
+        controller.addOverlay(clusterMarker);
+      }
+    }
+  }
+
+  // 클러스터 거리 계산
+  double _getClusterDistance(double zoomLevel) {
+    if (zoomLevel <= 10) return 4.0;
+    if (zoomLevel <= 12) return 2.0;
+    if (zoomLevel <= 13) return 0.6;
+    if (zoomLevel < 14) return 0.25;
+    return 0;
+  }
+
+  // 클러스터 생성
+  List<Cluster> _createClusters(double clusterDistance) {
+    List<Cluster> clusters = [];
+    for (var marker in _markers) {
+      if (!marker.isVisible) continue;
+
+      bool isClustered = false;
+      for (var cluster in clusters) {
+        if (_calculateDistance(cluster.position, marker.position) < clusterDistance) {
+          cluster.markers.add(marker);
+          isClustered = true;
+          break;
+        }
+      }
+
+      if (!isClustered) {
+        clusters.add(Cluster(marker.position, [marker]));
+      }
+    }
+    return clusters;
+  }
+
+  // 클러스터 마커 정보창
+  void _showClusterInfoOverlay(Cluster cluster, Offset position, double clusterSize) {
+    // 기존 정보창이 열려 있으면 닫기
+    _closeClusterInfoOverlay();
+
+    // 새로운 OverlayEntry 생성
+    _clusterInfoOverlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _closeClusterInfoOverlay,
+              child: Container(
+                color: Colors.transparent,
+              ),
+            ),
+          ),
+          Positioned(
+            left: position.dx - 125,
+            top: position.dy - (cluster.markers.length > 2 ? 150 : 80),
+            child: Material(
+              color: Colors.transparent,
+              child: GestureDetector(
+                onTap: () {}, // 정보창 클릭 시 닫히지 않도록
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 정보창 본체
+                    Container(
+                      width: 250,
+                      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            offset: Offset(2, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxHeight: 210,
+                            ),
+                            child: ListView.builder(
+                              padding: EdgeInsets.fromLTRB(0, 4, 0, 4),
+                              shrinkWrap: true,
+                              itemCount: cluster.markers.length,
+                              itemBuilder: (context, index) {
+                                final content = _contentList.firstWhere(
+                                      (c) => c['title'] == cluster.markers[index].info.id,
+                                );
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 1.0),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.fromLTRB(8, 0.5, 8, 0.5),
+                                    dense: true,
+                                    title: Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            content['title'],
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (content['verified'] == true)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 6.0),
+                                            child: Image.asset(
+                                              'assets/images/verification_mark_simple.png',
+                                              height: 16,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    subtitle: Text("분류: ${content['category']}"),
+                                    trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                                    onTap: () {
+                                      _closeClusterInfoOverlay();
+
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        setState(() {
+                                          _selectedContent = content;
+                                          _isDetailView = true;
+                                        });
+
+                                        Future.delayed(const Duration(milliseconds: 50), () {
+                                          _draggableController.animateTo(
+                                            maxHeightRatio,
+                                            duration: const Duration(milliseconds: 300),
+                                            curve: Curves.easeInOut,
+                                          ).then((_) {
+                                            dev.log("DraggableScrollableSheet expanded.", name: "NMarker");
+                                          }).catchError((error) {
+                                            dev.log("Failed to animate DraggableScrollableSheet: $error", name: "NMarker");
+                                          });
+                                        });
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 정보창 삼각형 부분
+                    ClipPath(
+                      clipper: TriangleClipper(),
+                      child: Container(
+                        color: Colors.white,
+                        height: 10,
+                        width: 20,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Overlay에 추가
+    Overlay.of(context).insert(_clusterInfoOverlayEntry!);
+  }
+
+  // 클러스터 마커 정보창 닫기
+  void _closeClusterInfoOverlay() {
+    if (_clusterInfoOverlayEntry != null) {
+      _clusterInfoOverlayEntry!.remove();
+      _clusterInfoOverlayEntry = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    screenHeight = MediaQuery.of(context).size.height;
+    extraHeight = 158.0;
+    minHeightRatio = 40 / screenHeight;
+    maxHeightRatio = (screenHeight - extraHeight) / screenHeight;
+
     return Center(
       child: Stack(
         children: [
@@ -263,36 +638,95 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               mapControllerCompleter.complete(controller);
               dev.log("onMapReady", name: "onMapReady");
             },
+            onCameraChange: (reason, animated) async {
+              final NaverMapController controller = await mapControllerCompleter.future;
+              final position = await controller.getCameraPosition();
+
+              if (position != null) {
+                // dev.log("_mapRotation: ${position.bearing}", name: "onCameraChange")
+                setState(() {
+                  _mapRotation = position.bearing;
+                });
+              }
+            },
+            onCameraIdle: () async {
+              final position = await (await mapControllerCompleter.future).getCameraPosition();
+              if (position != null) {
+                if (position.zoom != _zoomLevel) {
+                  _zoomLevel = position.zoom;
+                  _applyClustering(position.zoom);
+                }
+              }
+            },
+          ),
+          // 지도 옵션 버튼
+          Align(
+            alignment: Alignment.bottomLeft,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 48),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 나침반
+                  GestureDetector(
+                    onTap: _resetMapRotation,
+                    child: Transform.rotate(
+                      angle: -_mapRotation * (pi / 180),
+                      child: Container(
+                          width: 40,
+                          height: 40,
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4.0,
+                                offset: Offset(0, 0),
+                              ),
+                            ],
+                          ),
+                          child: Image.asset(
+                            'assets/images/compass_icon.png',
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
+                          )
+                        // Icon(Icons.explore, color: Colors.black),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // 현재 위치 추적
+                  GestureDetector(
+                    onTap: _moveToCurrentLocation,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      padding: const EdgeInsets.all(8.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 4.0,
+                            offset: Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                      child: Icon(Icons.my_location, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           Column(
             children: [
               // 검색창
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
-                child: Container(
-                  height: 55,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(1.0),
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 4.0,
-                        offset: Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      prefix: const SizedBox(width: 20),
-                      hintText: '검색어를 입력해주세요',
-                      suffixIcon: const Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                  ),
-                ),
-              ),
+              _buildSearchBar(),
               // 필터
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -312,21 +746,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               ),
             ],
           ),
-          // 목록
+          // 목록 시트
           DraggableScrollableSheet(
             controller: _draggableController,
-            initialChildSize: 0.05,
-            minChildSize: 0.05,
-            maxChildSize: 0.82,
+            initialChildSize: minHeightRatio,
+            minChildSize: minHeightRatio,
+            maxChildSize: maxHeightRatio,
             snap: true,
             builder: (context, scrollController) {
               return NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
-                  if (notification.extent == 0.82 && !_isExpanded) {
+                  if (notification.extent == maxHeightRatio && !_isExpanded) {
                     setState(() {
                       _isExpanded = true;
                     });
-                  } else if (notification.extent == 0.05 && _isExpanded) {
+                  } else if (notification.extent == minHeightRatio && _isExpanded) {
                     setState(() {
                       _isExpanded = false;
                     });
@@ -336,7 +770,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Container(
-                    height: 570,
+                    height: screenHeight - extraHeight - 163,
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                       color: Colors.white,
@@ -347,9 +781,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         GestureDetector(
                           onPanUpdate: (details) {
                             if (details.delta.dy < 0 && !_isExpanded) {
-                              // 위로 드래그할 때 (시트를 열기)
                               _draggableController.animateTo(
-                                0.82,
+                                maxHeightRatio,
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut,
                               );
@@ -357,9 +790,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                                 _isExpanded = true;
                               });
                             } else if (details.delta.dy > 0 && _isExpanded) {
-                              // 아래로 드래그할 때 (시트를 닫기)
                               _draggableController.animateTo(
-                                0.05,
+                                minHeightRatio,
                                 duration: const Duration(milliseconds: 300),
                                 curve: Curves.easeInOut,
                               );
@@ -369,12 +801,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                             }
                           },
                           child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 10),
-                            height: 5,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(10),
+                            height: 30.9,
+                            child: Center(
+                              child: Container(
+                                height: 5,
+                                width: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -403,15 +839,74 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     );
   }
 
+  // 클러스터 마커 빌더
+  Widget _buildClusterMarker(int count, double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.redAccent,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          '$count',  // 클러스터 내 마커 수 표시
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: size / 3,  // 마커 크기에 맞춰 텍스트 크기 조정
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // 검색창 빌더
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
+      child: Container(
+        height: 55,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(1.0),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4.0,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            prefix: const SizedBox(width: 20),
+            hintText: '검색어를 입력해주세요',
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.search, color: Colors.grey),
+              onPressed: _performSearch,
+            ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          onSubmitted: (value) => _performSearch(),
+        ),
+      ),
+    );
+  }
+
   // 콘텐츠 목록 빌더
   Widget _buildContentList(ScrollController scrollController) {
     return ListView.builder(
       controller: scrollController,
-      itemCount: _contentList.length,
+      itemCount: _filteredContentList.length,
       itemBuilder: (context, index) {
-        final content = _contentList[index];
+        final content = _filteredContentList[index];
+        double distance = content['distance'] ?? 0;
+
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
           child: Card(
             elevation: 0,
             color: Colors.white,
@@ -419,16 +914,51 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               borderRadius: BorderRadius.circular(10),
             ),
             child: ListTile(
-              contentPadding: const EdgeInsets.all(10.0),
-              title: Text(
-                content['title'],
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              contentPadding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+
+              title: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      content['title'],
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis, // 밑줄임 표시
+                    ),
+                  ),
+                  // 검증 마크
+                  if (content['verified'] == true)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Image.asset(
+                        'assets/images/verification_mark_simple.png',
+                        height: 18,
+                      ),
+                    ),
+                ],
               ),
-              subtitle: Text(
-                "category: ${content['category']}\n${content['description']}",
-                style: const TextStyle(fontSize: 12),
+
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("분류: ${content['category']}"),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                      const SizedBox(width: 3),
+                      Text(
+                        "${distance.toStringAsFixed(1)} km",
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
               ),
+
               trailing: const Icon(Icons.arrow_forward_ios),
+
               onTap: () {
                 setState(() {
                   _selectedContent = content;
@@ -445,14 +975,14 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 상세 정보 뷰 빌더
   Widget _buildDetailView() {
     String? imageUrl = _selectedContent?['imageUrl'];
-    NLatLng? contentLocation = _selectedContent?['location'];
-
+    NLatLng? contentLocation = NLatLng(_selectedContent!['latitude'], _selectedContent!['longitude']);
+    bool isVerified = _selectedContent?['verified'] ?? false;
     bool isWithin1km = contentLocation != null && _currentLocation != null
-        ? _calculateDistance(_currentLocation!, contentLocation) <= 1000
+        ? _calculateDistance(_currentLocation!, contentLocation) <= 1
         : false;
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -466,12 +996,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     _isDetailView = false;
                   });
                 },
-                child: const Icon(Icons.close, size: 30, color: Colors.black),
+                child: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
                       _selectedContent?['title'] ?? '사고 제목',
@@ -481,6 +1011,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                         color: Colors.black,
                       ),
                     ),
+                    const SizedBox(width: 10),
+                    // 검증 마크
+                    if (isVerified)
+                      Image.asset(
+                        'assets/images/verification_mark.png',
+                        height: 24,
+                      ),
                   ],
                 ),
               ),
@@ -489,26 +1026,33 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           const SizedBox(height: 16),
 
           // 사진 또는 영상
-          Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: BorderRadius.circular(12),
-              image: imageUrl != null
-                  ? DecorationImage(
-                image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
-                fit: BoxFit.cover,
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+              );
+            },
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+                image: imageUrl != null
+                    ? DecorationImage(
+                  image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
+                  fit: BoxFit.cover,
+                )
+                    : null,
+              ),
+              child: imageUrl == null
+                  ? const Icon(
+                Icons.videocam,
+                size: 50,
+                color: Colors.grey,
               )
-                  : null,
+                  : null, // 이미지가 없는 경우
             ),
-            child: imageUrl == null
-                ? const Icon(
-              Icons.videocam,
-              size: 50,
-              color: Colors.grey,
-            )
-                : null, // 이미지가 없는 경우
           ),
           const SizedBox(height: 16),
 
@@ -549,40 +1093,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ),
           const SizedBox(height: 30),
 
-          // 게시자 정보 섹션
+          // 라이브 버튼
           Row(
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.redAccent,
-                child: const Icon(Icons.person, color: Colors.white),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'USER',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '게시자 정보',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
-                  // 여기서 추가적인 동작을 정의
-                } : null, // 1km 이내일 때만 활성화, 그렇지 않으면 null로 비활성화
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
+                  );
+                } : null, // 1km 이내일 때만 활성화, 그렇지 않으면 비활성화
                 icon: const Icon(Icons.live_tv, color: Colors.white),
-                label: const Text('Live'),
+                label: const Text(
+                  'Go Live',
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isWithin1km ? Colors.redAccent : Colors.grey, // 활성화 상태에 따라 색상 변경
                   shape: RoundedRectangleBorder(
@@ -599,6 +1126,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 }
 
+// 필터 칩 클래스
 class MapFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
@@ -646,6 +1174,7 @@ class MapFilterChip extends StatelessWidget {
   }
 }
 
+// 사용자 위치 마커 클래스
 class MarkerIcon extends StatelessWidget {
   final Color color;
 
@@ -683,4 +1212,28 @@ class MarkerIcon extends StatelessWidget {
       ],
     );
   }
+}
+
+// 클러스터 클래스
+class Cluster {
+  final NLatLng position;
+  final List<NMarker> markers;
+
+  Cluster(this.position, this.markers);
+}
+
+// 삼각형 모양을 그리기 위한 클리퍼
+class TriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width / 2, size.height);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
