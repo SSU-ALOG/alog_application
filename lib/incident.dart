@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
+import 'package:alog/accident_detail.dart';
 import 'package:alog/main.dart';
 import 'package:alog/services/api_service.dart';
 import 'package:flutter/material.dart';
@@ -113,6 +114,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
   }
 
   Set<String> _selectedDisaster = {'ALL'};
+
   void _disasterToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -138,6 +140,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
   }
 
   Set<String> _selectedDisasterStatus = {'ALL'};
+
   void _disasterStatusToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -268,7 +271,8 @@ class _IncidentScreenState extends State<IncidentScreen> {
                 } else {
                   final issues = snapshot.data!;
                   for (var issue in issues) {
-                    dev.log('Issue in UI: ${issue.toJson()}', name: 'FutureBuilder');
+                    dev.log('Issue in UI: ${issue.toJson()}',
+                        name: 'FutureBuilder');
                   }
 
                   return ListView.builder(
@@ -279,10 +283,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
                       final icon = getDisasterIcon(issue.status);
 
                       return EventCard(
-                        title: issue.title,
-                        addr: issue.addr,
-                        date: issue.date.toIso8601String(),
-                        description: issue.description ?? 'none',
+                        issue: issue, // Issue 객체 전달
                         backgroundColor: colorSet.shade,
                         iconColor: colorSet.main,
                         icon: icon,
@@ -469,21 +470,14 @@ List<Issue> sortIssuesByDate(List<Issue> issues) {
 }
 
 class EventCard extends StatelessWidget {
-  final String title;
-  final String addr;
-  final String date;
-  final String description;
+  final Issue issue; // Issue 객체 전달받음
   final Color backgroundColor;
   final Color iconColor;
   final IconData icon;
-
   final double iconSize;
 
   const EventCard(
-      {required this.title,
-      required this.addr,
-      required this.date,
-      required this.description,
+      {required this.issue,
       required this.backgroundColor,
       required this.iconColor,
       required this.icon,
@@ -491,44 +485,62 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8.0),
-      padding: EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: iconSize),
-          SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-                SizedBox(height: 4.0),
-                Text(
-                  '$addr',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(height: 4.0),
-                Text(
-                  '발생일시: $date',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(height: 8.0),
-                Text(description),
-              ],
-            ),
+    return GestureDetector(
+      onTap: () {
+        // DetailScreen으로 navigate
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailScreen(issue: issue),
           ),
-        ],
+        );
+      },
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        padding: EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 6.0,
+              offset: Offset(0,3),
+            )
+          ]
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: iconSize),
+            SizedBox(width: 16.0),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    issue.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.0,
+                    ),
+                  ),
+                  SizedBox(height: 4.0),
+                  Text(
+                    issue.addr,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  SizedBox(height: 4.0),
+                  Text(
+                    '발생일시: ${issue.date.toIso8601String()}',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  SizedBox(height: 8.0),
+                  Text(issue.description ?? '설명을 추가해주세요.'),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
