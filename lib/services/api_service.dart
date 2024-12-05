@@ -37,10 +37,10 @@ class ApiService {
     if (response.statusCode == 200) {
       final decodedBody = utf8.decode(response.bodyBytes); // 한글 decode
       List jsonResponse = json.decode(decodedBody);
-      dev.log('Decoded JSON Response: $jsonResponse', name: 'fetchRecentIssues');
+      // dev.log('Decoded JSON Response: $jsonResponse', name: 'fetchRecentIssues');
       return jsonResponse.map((data) {
         // log로 확인할 데이터 출력
-        dev.log('Mapping data: $data', name: 'fetchRecentIssues');
+        // dev.log('Mapping data: $data', name: 'fetchRecentIssues');
 
         // Issue 객체로 변환
         final issue = Issue.fromJson(data);
