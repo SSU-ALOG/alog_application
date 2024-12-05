@@ -613,15 +613,40 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       actions: [
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Row(
-            children: [
-              Icon(Icons.remove_red_eye, color: Colors.grey),
-              SizedBox(width: 5),
-              Text(
-                '1245',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
+          // Chatting 컬렉션을 실시간으로 구독하여, 채팅을 화면에 표시
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('Viewers')
+                .where('channelId', isEqualTo: 'ls-20241203212555-vXxrx')  // 특정 채널에 대한 시청자 정보
+                .snapshots(),  // 실시간으로 데이터 스트림을 받아옵니다.
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return Row(
+                  children: [
+                    Icon(Icons.remove_red_eye, color: Colors.grey),
+                    SizedBox(width: 5),
+                    Text(
+                      '0',  // 데이터를 아직 못 받았을 때는 0으로 표시
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                );
+              }
+
+              // 실시간으로 시청자 수를 받아와서 표시합니다.
+              int viewerCount = snapshot.data!.docs.length;
+
+              return Row(
+                children: [
+                  Icon(Icons.remove_red_eye, color: Colors.grey),
+                  SizedBox(width: 5),
+                  Text(
+                    '$viewerCount',  // 시청자 수 표시
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -734,12 +759,19 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                       icon: Icon(Icons.send, color: Colors.white),
                       onPressed: () {
                         if (_commentController.text.isNotEmpty) {
+                          String messageText = _commentController.text;
+                          String userId = 'user123';  // 이 값은 실제 사용자 ID로 변경
+                          String channelId = 'ls-20241203212555-vXxrx';  // 해당 방송의 채널 ID
+
+                          // sendMessage 함수 호출
+                          sendMessage(userId, channelId, messageText);
+
                           setState(() {
                             messages.insert(0, {
-                              'user': 'USER${messages.length + 1}',
-                              'message': _commentController.text,
+                              'user': userId,
+                              'message': messageText,
                             });
-                            _commentController.clear();
+                            _commentController.clear();  // 메시지 전송 후 입력 필드 비우기
                           });
                         }
                       },
@@ -1228,5 +1260,19 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     logError(e.code, e.description ?? "No description found");
     print('Error: ${e.code}\n${e.description ?? "No description found"}');
   }
+}
 
+// 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
+Future<void> sendMessage(String userId, String channelId, String messageText) async {
+  try {
+    await FirebaseFirestore.instance.collection('Chatting').add({
+      'userId': userId,
+      'channelId': channelId,
+      'text': messageText,
+      'createdAt': FieldValue.serverTimestamp(),  // 메시지 전송 시간
+    });
+    print("Message sent");
+  } catch (e) {
+    print("Error sending message: $e");
+  }
 }

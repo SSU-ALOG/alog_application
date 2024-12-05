@@ -4,6 +4,7 @@ import 'package:alog/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'map.dart';
 import 'incident.dart';
@@ -28,6 +29,7 @@ void main() async {
 // 초기화 함수
 Future<void> initialize() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();  // Firebase 초기화
 
   // 환경 변수 설정
   await dotenv.load(fileName: '.env');
@@ -67,7 +69,7 @@ class _AppScreenState extends State<AppScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const NotificationsScreen(),
-    const SafetyInfoScreen(),
+    SafetyInfoScreen(),
     const IncidentScreen(),
   ];
 
@@ -99,37 +101,6 @@ class _AppScreenState extends State<AppScreen> {
             leading: IconButton(
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
-                // 추가 기능 구현
-                // showModalBottomSheet(
-                //     context: context,
-                //     builder: (BuildContext context) {
-                //   return Container(
-                //     padding: const EdgeInsets.all(16.0),
-                //     child: Column(
-                //       mainAxisSize: MainAxisSize.min,
-                //       children: [
-                //         ElevatedButton(
-                //           onPressed: () {
-                //             Navigator.of(context).push(
-                //               MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
-                //             );
-                //           },
-                //           child: const Text('Go to Live'),
-                //         ),
-                //         const SizedBox(height: 8.0),
-                //         ElevatedButton(
-                //           onPressed: () {
-                //             Navigator.of(context).push(
-                //               MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
-                //             );
-                //           },
-                //           child: const Text('Go to View'),
-                //         ),
-                //       ],
-                //     ),
-                //   );
-                // },
-                // );
                 // 사건 등록 스크린
                 Navigator.push(
                   context,

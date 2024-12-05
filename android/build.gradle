@@ -16,3 +16,14 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+
+buildscript {
+    repositories {
+        google()  // Google Maven repository 추가
+        mavenCentral()
+    }
+    dependencies {
+        // Google services Gradle plugin 추가
+        classpath 'com.google.gms:google-services:4.4.2'  // 해당 플러그인의 버전 추가
+    }
+}

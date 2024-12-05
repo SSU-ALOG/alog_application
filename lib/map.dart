@@ -115,8 +115,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        _currentLocation = NLatLng(position.latitude, position.longitude);
-        // _currentLocation = defaultLocation;
+        // _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
+        _currentLocation = defaultLocation; // defalut로 학교 위치
       });
     } catch (e) {
       setState(() {
@@ -770,7 +770,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Container(
-                    height: screenHeight - extraHeight - 163,
+                    height: screenHeight - extraHeight, // screenHeight - extraHeight - 163 (수정)
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                       color: Colors.white,
