@@ -3,21 +3,8 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 import 'package:alog/accident_detail.dart';
-import 'package:alog/main.dart';
 import 'package:alog/models/issue.dart';
 import 'package:alog/services/api_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-// dummy data
-// final List<Map<String, String>> events = [
-//   {'status': '진행중', 'date': '2024-10-04', 'description': ' event'},
-//   {'status': '상황종료', 'date': '2024-10-03', 'description': 'event'},
-//   {'status': '상황종료', 'date': '2024-10-02', 'description': ' event'},
-//   {'status': '진행중', 'date': '2024-10-01', 'description': ' event'},
-//   {'status': '긴급', 'date': '2024-10-01', 'description': ' event'},
-//   {'status': '긴급', 'date': '2024-10-10', 'description': ' event'},
-//   {'status': '진행중', 'date': '2024-10-03', 'description': ' event'},
-// ];
 
 // Disaster Categories
 const List<String> disasterCategories = [
@@ -158,60 +145,6 @@ class _IncidentScreenState extends State<IncidentScreen> {
     }).toList();
   }
 
-  void _disasterToggleFilter(String filter) {
-    setState(() {
-      if (filter == 'ALL') {
-        // ALL 선택 시 다른 필터를 해제
-        _selectedDisaster.clear();
-        _selectedDisaster.add('ALL');
-      } else {
-        // 다른 필터 선택 시 ALL 해제
-        if (_selectedDisaster.contains('ALL')) {
-          _selectedDisaster.remove('ALL');
-        }
-        if (_selectedDisaster.contains(filter)) {
-          _selectedDisaster.remove(filter);
-        } else {
-          _selectedDisaster.add(filter);
-        }
-      }
-      // 선택된 필터가 없을 시 자동으로 ALL 선택
-      if (_selectedDisaster.isEmpty) {
-        _selectedDisaster.add('ALL');
-      }
-    });
-  }
-
-  void _disasterStatusToggleFilter(String filter) {
-    setState(() {
-      if (filter == 'ALL') {
-        // ALL 선택 시 다른 필터를 해제
-        _selectedDisasterStatus.clear();
-        _selectedDisasterStatus.add('ALL');
-      } else {
-        // 다른 필터 선택 시 ALL 해제
-        if (_selectedDisasterStatus.contains('ALL')) {
-          _selectedDisasterStatus.remove('ALL');
-        }
-        if (_selectedDisasterStatus.contains(filter)) {
-          _selectedDisasterStatus.remove(filter);
-        } else {
-          _selectedDisasterStatus.add(filter);
-        }
-      }
-      // 선택된 필터가 없을 시 자동으로 ALL 선택
-      if (_selectedDisasterStatus.isEmpty) {
-        _selectedDisasterStatus.add('ALL');
-      }
-    });
-  }
-
-  void _regionFilterChange(String region) {
-    setState(() {
-      _selectedRegion = region;
-    });
-  }
-
   // call apiservice for fetching issue data
   Future<List<Issue>> fetchAndSortIssues() async {
     final apiService = ApiService();
@@ -261,7 +194,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
                 final filteredAndSortedIssues = sortIssuesByDate(_applyFilters(issues)); // filter 적용 후 정렬
 
                 return filteredAndSortedIssues.isEmpty
-                    ? Center(child: Text('No issues available'))
+                    ? Center(child: Text('해당하는 재난 정보가 없습니다.🥵'))
                     : ListView.builder(
                         itemCount: filteredAndSortedIssues.length,
                         itemBuilder: (context, index) {
