@@ -1,17 +1,20 @@
 import 'dart:developer';
 
-import 'package:alog/user_info.dart';
+import 'package:alog/services/websocket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 
-import 'map.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import 'accident_registration.dart';
 import 'incident.dart';
+import 'map.dart';
+import 'message.dart';
+import 'safetyinfo.dart';
 import 'user_login.dart';
 import 'user_info.dart';
-// import 'message.dart';
-// import 'safetyinfo.dart';
-import 'accident_registration.dart';
 
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
@@ -21,6 +24,12 @@ String? phoneNumber;
 void main() async {
   await initialize();
   runApp(const App());
+  // runApp(
+  //   ChangeNotifierProvider(
+  //     create: (context) => IssueProvider(),
+  //     child: const App(),
+  //   ),
+  // );
 }
 
 // 초기화 함수
@@ -43,6 +52,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -82,6 +92,20 @@ class _AppScreenState extends State<AppScreen> {
     Icons.info,
     Icons.remove_red_eye
   ];
+
+  final WebSocketService webSocketService = WebSocketService();
+
+  @override
+  void initState() {
+    super.initState();
+    webSocketService.initStompClient(); // WebSocket 초기화
+  }
+
+  @override
+  void dispose() {
+    webSocketService.dispose(); // WebSocket 종료
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,23 +200,23 @@ class _AppScreenState extends State<AppScreen> {
 // 더미 위젯들
 // 본인 파트 따로 파일 만들어서 빼주면 감사링~
 
-class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+// class NotificationsScreen extends StatelessWidget {
+//   const NotificationsScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("문자 모아보기 화면"));
+//   }
+// }
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("문자 모아보기 화면"));
-  }
-}
-
-class SafetyInfoScreen extends StatelessWidget {
-  const SafetyInfoScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(child: Text("안전 정보 화면"));
-  }
-}
+// class SafetyInfoScreen extends StatelessWidget {
+//   const SafetyInfoScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("안전 정보 화면"));
+//   }
+// }
 
 //
 // class IncidentScreen extends StatelessWidget {

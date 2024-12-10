@@ -788,7 +788,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Container(
-                    height: screenHeight - extraHeight - 163,
+                    height: screenHeight - extraHeight - 163, // 106 (수정)
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                       color: Colors.white,
