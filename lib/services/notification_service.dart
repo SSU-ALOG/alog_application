@@ -1,5 +1,6 @@
 import 'package:alog/models/issue.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:geolocator/geolocator.dart';
 
 class NotificationService {
@@ -13,26 +14,49 @@ class NotificationService {
       iOS: DarwinInitializationSettings(),
     );
     _notificationsPlugin.initialize(initializationSettings);
+
+    // FCM 메시지 수신 핸들러 등록
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _handleIncomingMessage(message);
+    });
   }
 
-  void handleIncomingIssue(Issue issue) async {
-    final bool shouldNotify = await _checkCondition(issue);
-    if (shouldNotify) {
-      _sendNotification(
-        '[${issue.addr}] ${issue.category} 알림! 📢',
-        '${issue.title}',
+  Future<void> _handleIncomingMessage(RemoteMessage message) async {
+    try {
+      // FCM 데이터 파싱
+      final data = message.data;
+      final issue = Issue(
+        issueId: null,
+        title: data['title'] ?? '제목 없음',
+        category: data['category'] ?? '기타',
+        description: null,
+        latitude: double.parse(data['latitude']),
+        longitude: double.parse(data['longitude']),
+        date: DateTime.now(),
+        status: '진행중',
+        verified: false,
+        addr: data['addr'] ?? '주소 없음',
       );
+
+      // 위치 조건 확인
+      final bool shouldNotify = await _checkCondition(issue);
+      if (shouldNotify) {
+        _sendNotification(
+          '[${issue.addr}] ${issue.category} 알림! 📢',
+          '${issue.title}',
+        );
+      }
+    } catch (e) {
+      print('NotificationService: 메시지 처리 중 오류 발생 - $e');
     }
   }
 
   Future<bool> _checkCondition(Issue issue) async {
     try {
-      // 사용자 현재 위치 가져오기
       Position userPosition = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      // 거리 계산 (미터 단위)
       double distanceInMeters = Geolocator.distanceBetween(
         userPosition.latitude,
         userPosition.longitude,
@@ -40,7 +64,6 @@ class NotificationService {
         issue.longitude,
       );
 
-      // 1km 이내인지 확인
       if (distanceInMeters <= 1000) {
         return true;
       } else {
@@ -65,10 +88,10 @@ class NotificationService {
     NotificationDetails(android: androidDetails, iOS: iOSDetails);
 
     await _notificationsPlugin.show(
-      0, // 알림 ID
-      title, // 알림 제목
-      body, // 알림 내용
-      notificationDetails, // 알림 설정
+      0,
+      title,
+      body,
+      notificationDetails,
     );
 
     print('NotificationService: 알림 전송 완료($title - $body)');

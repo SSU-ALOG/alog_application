@@ -1,6 +1,7 @@
 import 'dart:developer';
 
-import 'package:alog/services/websocket_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
@@ -24,12 +25,6 @@ String? phoneNumber;
 void main() async {
   await initialize();
   runApp(const App());
-  // runApp(
-  //   ChangeNotifierProvider(
-  //     create: (context) => IssueProvider(),
-  //     child: const App(),
-  //   ),
-  // );
 }
 
 // 초기화 함수
@@ -44,6 +39,15 @@ Future<void> initialize() async {
       clientId: dotenv.env['NCP_MAP_API_KEY_ID'],
       onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
   );
+
+  // 알림 권한 요청
+  if (await Permission.notification.isDenied) {
+    await Permission.notification.request();
+  }
+
+  // FCM 초기화
+  await Firebase.initializeApp();
+  FirebaseMessaging.instance.subscribeToTopic('all');
 }
 
 class App extends StatelessWidget {
@@ -92,20 +96,6 @@ class _AppScreenState extends State<AppScreen> {
     Icons.info,
     Icons.remove_red_eye
   ];
-
-  final WebSocketService webSocketService = WebSocketService();
-
-  @override
-  void initState() {
-    super.initState();
-    webSocketService.initStompClient(); // WebSocket 초기화
-  }
-
-  @override
-  void dispose() {
-    webSocketService.dispose(); // WebSocket 종료
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
