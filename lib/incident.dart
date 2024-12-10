@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:developer' as dev;
 
+import 'package:flutter/material.dart';
 import 'package:alog/accident_detail.dart';
 import 'package:alog/main.dart';
+import 'package:alog/models/issue.dart';
 import 'package:alog/services/api_service.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-
-import 'models/issue.dart';
-import 'services/api_service.dart';
 
 // dummy data
 // final List<Map<String, String>> events = [
@@ -44,6 +42,28 @@ const List<String> disasterStatusList = [
   '긴급',
 ];
 
+// region list
+const List<String> regions = [
+  'ALL',
+  '서울특별시',
+  '부산광역시',
+  '대구광역시',
+  '인천광역시',
+  '광주광역시',
+  '대전광역시',
+  '울산광역시',
+  '세종특별자치시',
+  '경기도',
+  '충청북도',
+  '충청남도',
+  '전라남도',
+  '경상북도',
+  '경상남도',
+  '강원특별자치도',
+  '전북특별자치도',
+  '제주특별자치도'
+];
+
 // set ColorSet class for matching main color and shade color
 class ColorSet {
   final Color main;
@@ -71,27 +91,18 @@ const Map<String, IconData> disasterStatusIcons = {
   '긴급': Icons.circle_notifications_rounded
 };
 
-// region list
-const List<String> regions = [
-  'ALL',
-  '서울특별시',
-  '부산광역시',
-  '대구광역시',
-  '인천광역시',
-  '광주광역시',
-  '대전광역시',
-  '울산광역시',
-  '세종특별자치시',
-  '경기도',
-  '충청북도',
-  '충청남도',
-  '전라남도',
-  '경상북도',
-  '경상남도',
-  '강원특별자치도',
-  '전북특별자치도',
-  '제주특별자치도'
-];
+// set default event design
+ColorSet getDisasterColorSet(String status) {
+  return disasterStatusColors[status] ??
+      ColorSet(
+        main: Colors.grey,
+        shade: Colors.grey.shade200,
+      );
+}
+
+IconData getDisasterIcon(String status) {
+  return disasterStatusIcons[status] ?? Icons.error_rounded;
+}
 
 class IncidentScreen extends StatefulWidget {
   const IncidentScreen({Key? key}) : super(key: key);
@@ -100,20 +111,52 @@ class IncidentScreen extends StatefulWidget {
   _IncidentScreenState createState() => _IncidentScreenState();
 }
 
+// 필터링 상태
+Set<String> _selectedDisaster = {'ALL'};
+Set<String> _selectedDisasterStatus = {'ALL'};
+String _selectedRegion = 'ALL';
+
 class _IncidentScreenState extends State<IncidentScreen> {
-  // Issue data
   late Future<List<Issue>> futureIssues;
   final ApiService apiService = ApiService(); // ApiService 인스턴스 생성
 
   @override
   void initState() {
     super.initState();
-
     // ApiService를 통해 fetchRecentIssues 호출
     futureIssues = apiService.fetchRecentIssues();
   }
 
-  Set<String> _selectedDisaster = {'ALL'};
+  void _toggleFilter(Set<String> selectedSet, String filter) {
+    setState(() {
+      if (filter == 'ALL') {
+        selectedSet.clear();
+        selectedSet.add('ALL');
+      } else {
+        if (selectedSet.contains('ALL')) selectedSet.remove('ALL');
+        if (!selectedSet.add(filter)) selectedSet.remove(filter);
+      }
+      if (selectedSet.isEmpty) selectedSet.add('ALL');
+    });
+  }
+
+  List<Issue> _applyFilters(List<Issue> issues) {
+    return issues.where((issue) {
+      // status
+      final statusMatch = _selectedDisasterStatus.contains('ALL') ||
+          _selectedDisasterStatus.contains(issue.status);
+
+      // category
+      final categoryMatch = _selectedDisaster.contains('ALL') ||
+          _selectedDisaster.contains(issue.category);
+
+      // region
+      final regionMatch =
+          _selectedRegion == 'ALL' || issue.addr.contains(_selectedRegion);
+
+      return statusMatch && categoryMatch && regionMatch;
+    }).toList();
+  }
 
   void _disasterToggleFilter(String filter) {
     setState(() {
@@ -139,8 +182,6 @@ class _IncidentScreenState extends State<IncidentScreen> {
     });
   }
 
-  Set<String> _selectedDisasterStatus = {'ALL'};
-
   void _disasterStatusToggleFilter(String filter) {
     setState(() {
       if (filter == 'ALL') {
@@ -165,136 +206,182 @@ class _IncidentScreenState extends State<IncidentScreen> {
     });
   }
 
+  void _regionFilterChange(String region) {
+    setState(() {
+      _selectedRegion = region;
+    });
+  }
+
+  // call apiservice for fetching issue data
+  Future<List<Issue>> fetchAndSortIssues() async {
+    final apiService = ApiService();
+    List<Issue> issues = await apiService.fetchRecentIssues();
+
+    // 가져온 데이터를 로그로 출력
+    for (var issue in issues) {
+      dev.log('Fetched Issue: ${issue.toJson()}', name: 'fetchAndSortIssues');
+    }
+
+    // sort by date
+    return sortIssuesByDate(issues);
+  }
+
+// sort issues using date
+  List<Issue> sortIssuesByDate(List<Issue> issues) {
+    List<Issue> sortedIssues = List.from(issues);
+    sortedIssues.sort((a, b) {
+      return b.date.compareTo(a.date);
+    });
+    return sortedIssues;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         // appBar- main.dart
         backgroundColor: Colors.white,
         body: Column(children: [
-          // 검색창, 필터 버튼 등 고정된 상단 위젯
-          Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 검색창
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
-                  child: Container(
-                    height: 55,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(1.0),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4.0,
-                          offset: Offset(0, 0),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        prefix: const SizedBox(width: 20),
-                        hintText: '검색어를 입력해주세요',
-                        suffixIcon:
-                            const Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Disaster Category part
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: disasterCategories
-                          .map(
-                            (filter) => DisasterFilterChip(
-                              label: filter,
-                              isSelected: _selectedDisaster.contains(filter),
-                              onSelected: () => _disasterToggleFilter(filter),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ),
-
-                // Disaster Status part
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: disasterStatusList
-                          .map(
-                            (filter) => DisasterStatusFilterChip(
-                              label: filter,
-                              isSelected:
-                                  _selectedDisasterStatus.contains(filter),
-                              onSelected: () =>
-                                  _disasterStatusToggleFilter(filter),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ),
-
-                // Regions
-                RegionDropDown(),
-                SizedBox(height: 5.0),
-              ],
-            ),
-          ),
+          // upper widget: search box, category, status, and region
+          _buildFilters(),
 
           // Accidents list
           Expanded(
             child: FutureBuilder<List<Issue>>(
-              future: fetchAndSortIssues(), // 정렬된 issue list 가져오기
+              future: futureIssues, // fetchRecentIssues 호출 후 정렬 data
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
+                }
+                if (snapshot.hasError) {
                   return Center(
                       child: Text('Failed to load issues: ${snapshot.error}'));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No issues available'));
-                } else {
-                  final issues = snapshot.data!;
-                  for (var issue in issues) {
-                    dev.log('Issue in UI: ${issue.toJson()}',
-                        name: 'FutureBuilder');
-                  }
-
-                  return ListView.builder(
-                    itemCount: issues.length,
-                    itemBuilder: (context, index) {
-                      final issue = issues[index];
-                      final colorSet = getDisasterColorSet(issue.status);
-                      final icon = getDisasterIcon(issue.status);
-
-                      return EventCard(
-                        issue: issue, // Issue 객체 전달
-                        backgroundColor: colorSet.shade,
-                        iconColor: colorSet.main,
-                        icon: icon,
-                      );
-                    },
-                  );
                 }
+
+                final issues = snapshot.data ?? [];
+                final filteredAndSortedIssues = sortIssuesByDate(_applyFilters(issues)); // filter 적용 후 정렬
+
+                return filteredAndSortedIssues.isEmpty
+                    ? Center(child: Text('No issues available'))
+                    : ListView.builder(
+                        itemCount: filteredAndSortedIssues.length,
+                        itemBuilder: (context, index) {
+                          final issue = filteredAndSortedIssues[index];
+                          final colorSet = getDisasterColorSet(issue.status);
+                          final icon = getDisasterIcon(issue.status);
+
+                          return EventCard(
+                            issue: issue, // Issue 객체 전달
+                            backgroundColor: colorSet.shade,
+                            iconColor: colorSet.main,
+                            icon: icon,
+                          );
+                        },
+                      );
               },
             ),
           ),
         ]));
+  }
+
+  // search box, disaster category, disaster status, region
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.all(3.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSearchBox(),
+          _buildCategoryFilter(),
+          _buildStatusFilter(),
+          _buildRegionDropdown(),
+        ],
+      ),
+    );
+  }
+
+  // search box
+  Widget _buildSearchBox() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 5),
+      child: Container(
+        height: 55,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(1.0),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4.0,
+              offset: Offset(0, 0),
+            ),
+          ],
+        ),
+        child: TextField(
+          decoration: InputDecoration(
+            prefix: const SizedBox(width: 20),
+            hintText: '검색어를 입력해주세요',
+            suffixIcon: const Icon(Icons.search, color: Colors.grey),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // disaster category
+  Widget _buildCategoryFilter() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 16),
+      child: Row(
+        children: disasterCategories.map((filter) {
+          return DisasterFilterChip(
+            label: filter,
+            isSelected: _selectedDisaster.contains(filter),
+            onSelected: () => _toggleFilter(_selectedDisaster, filter),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // disaster status
+  Widget _buildStatusFilter() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 16),
+      child: Row(
+        children: disasterStatusList.map((filter) {
+          return DisasterStatusFilterChip(
+            label: filter,
+            isSelected: _selectedDisasterStatus.contains(filter),
+            onSelected: () => _toggleFilter(_selectedDisasterStatus, filter),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // region
+  Widget _buildRegionDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: DropdownButton<String>(
+        value: _selectedRegion,
+        items: regions.map((region) {
+          return DropdownMenuItem(
+            value: region,
+            child: Text(region),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            _selectedRegion = value!;
+          });
+        },
+      ),
+    );
   }
 }
 
@@ -388,7 +475,7 @@ class DisasterStatusFilterChip extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? Colors.white
-                    : disasterStatusColors[label]!.main,
+                    : label.contains('ALL') ? Colors.black : disasterStatusColors[label]!.main,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -397,76 +484,6 @@ class DisasterStatusFilterChip extends StatelessWidget {
       ),
     );
   }
-}
-
-// Region Dropdown widget
-class RegionDropDown extends StatefulWidget {
-  @override
-  _RegionDropDownState createState() => _RegionDropDownState();
-}
-
-class _RegionDropDownState extends State<RegionDropDown> {
-  String? _selectedRegion = 'ALL';
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text('      지역:'),
-        SizedBox(width: 8.0),
-        DropdownButton<String>(
-          value: _selectedRegion,
-          items: regions
-              .map((region) => DropdownMenuItem(
-                    value: region,
-                    child: Text(region),
-                  ))
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedRegion = value; // 선택 값 update
-            });
-          },
-        ),
-      ], // children
-    );
-  }
-}
-
-// set default event design
-ColorSet getDisasterColorSet(String status) {
-  return disasterStatusColors[status] ??
-      ColorSet(
-        main: Colors.grey,
-        shade: Colors.grey.shade200,
-      );
-}
-
-IconData getDisasterIcon(String status) {
-  return disasterStatusIcons[status] ?? Icons.error_rounded;
-}
-
-// call apiservice for fetching issue data
-Future<List<Issue>> fetchAndSortIssues() async {
-  final apiService = ApiService();
-  List<Issue> issues = await apiService.fetchRecentIssues();
-
-  // 가져온 데이터를 로그로 출력
-  for (var issue in issues) {
-    dev.log('Fetched Issue: ${issue.toJson()}', name: 'fetchAndSortIssues');
-  }
-
-  // sort
-  return sortIssuesByDate(issues);
-}
-
-// sort issues using date
-List<Issue> sortIssuesByDate(List<Issue> issues) {
-  List<Issue> sortedIssues = List.from(issues);
-  sortedIssues.sort((a, b) {
-    return b.date.compareTo(a.date);
-  });
-  return sortedIssues;
 }
 
 class EventCard extends StatelessWidget {
@@ -499,16 +516,15 @@ class EventCard extends StatelessWidget {
         margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         padding: EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(20.0),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6.0,
-              offset: Offset(0,3),
-            )
-          ]
-        ),
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(20.0),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 6.0,
+                offset: Offset(0, 3),
+              )
+            ]),
         child: Row(
           children: [
             Icon(icon, color: iconColor, size: iconSize),
@@ -535,7 +551,7 @@ class EventCard extends StatelessWidget {
                     style: TextStyle(color: Colors.grey),
                   ),
                   SizedBox(height: 8.0),
-                  Text(issue.description ?? '설명을 추가해주세요.'),
+                  Text(issue.description ?? 'none'),
                 ],
               ),
             ),
