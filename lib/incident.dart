@@ -102,6 +102,7 @@ class IncidentScreen extends StatefulWidget {
 Set<String> _selectedDisaster = {'ALL'};
 Set<String> _selectedDisasterStatus = {'ALL'};
 String _selectedRegion = 'ALL';
+String _searchQuery = "";
 
 class _IncidentScreenState extends State<IncidentScreen> {
   late Future<List<Issue>> futureIssues;
@@ -127,6 +128,12 @@ class _IncidentScreenState extends State<IncidentScreen> {
     });
   }
 
+  void _performSearch(String query) {
+    setState(() {
+      _searchQuery = query; // 검색어 상태 업데이트
+    });
+  }
+
   List<Issue> _applyFilters(List<Issue> issues) {
     return issues.where((issue) {
       // status
@@ -141,7 +148,14 @@ class _IncidentScreenState extends State<IncidentScreen> {
       final regionMatch =
           _selectedRegion == 'ALL' || issue.addr.contains(_selectedRegion);
 
-      return statusMatch && categoryMatch && regionMatch;
+      // search box
+      final searchMatch = _searchQuery.isEmpty ||
+          issue.title.contains(_searchQuery) ||
+          (issue.description?.contains(_searchQuery) ?? false) ||
+          issue.addr.contains(_searchQuery) ||
+          issue.category.contains(_searchQuery);
+
+      return statusMatch && categoryMatch && regionMatch && searchMatch;
     }).toList();
   }
 
@@ -191,7 +205,8 @@ class _IncidentScreenState extends State<IncidentScreen> {
                 }
 
                 final issues = snapshot.data ?? [];
-                final filteredAndSortedIssues = sortIssuesByDate(_applyFilters(issues)); // filter 적용 후 정렬
+                final filteredAndSortedIssues =
+                    sortIssuesByDate(_applyFilters(issues)); // filter 적용 후 정렬
 
                 return filteredAndSortedIssues.isEmpty
                     ? Center(child: Text('해당하는 재난 정보가 없습니다.🥵'))
@@ -250,10 +265,23 @@ class _IncidentScreenState extends State<IncidentScreen> {
           ],
         ),
         child: TextField(
+          onChanged: (query) {
+            setState(() {
+              _searchQuery = query; // 검색어 업데이트
+            });
+          },
+          onSubmitted: (query) {
+            _performSearch(query); // enter 입력 시 검색 실행
+          },
           decoration: InputDecoration(
             prefix: const SizedBox(width: 20),
             hintText: '검색어를 입력해주세요',
-            suffixIcon: const Icon(Icons.search, color: Colors.grey),
+            suffixIcon: GestureDetector(
+              onTap: () {
+                _performSearch(_searchQuery);
+              },
+              child: const Icon(Icons.search, color: Colors.grey),
+            ),
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
@@ -408,7 +436,9 @@ class DisasterStatusFilterChip extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? Colors.white
-                    : label.contains('ALL') ? Colors.black : disasterStatusColors[label]!.main,
+                    : label.contains('ALL')
+                        ? Colors.black
+                        : disasterStatusColors[label]!.main,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -466,12 +496,27 @@ class EventCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    issue.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        issue.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16.0,
+                        ),
+                      ),
+                      if (issue.verified) // verified가 true일 때만 아이콘 표시
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          // 텍스트와 아이콘 사이 간격
+                          child: Image.asset(
+                            'assets/images/verification_mark_simple.png',
+                            // 아이콘 경로
+                            width: 20, // 아이콘 크기
+                            height: 20,
+                          ),
+                        ),
+                    ],
                   ),
                   SizedBox(height: 4.0),
                   Text(
