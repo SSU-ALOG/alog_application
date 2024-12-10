@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:alog/accident_detail.dart';
 import 'package:alog/models/issue.dart';
 import 'package:alog/services/api_service.dart';
+import 'package:intl/intl.dart';
 
 // Disaster Categories
 const List<String> disasterCategories = [
@@ -463,6 +464,11 @@ class EventCard extends StatelessWidget {
       required this.icon,
       this.iconSize = 30.0});
 
+  String _formatDate(String isoString){
+    final dateTime = DateTime.parse(isoString);
+    return DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -525,7 +531,7 @@ class EventCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4.0),
                   Text(
-                    '발생일시: ${issue.date.toIso8601String()}',
+                    '발생일시: ${_formatDate(issue.date.toIso8601String())}',
                     style: TextStyle(color: Colors.grey),
                   ),
                   SizedBox(height: 8.0),
