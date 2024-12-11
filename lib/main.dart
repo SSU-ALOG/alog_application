@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
+import 'accident_registration.dart';
+import 'incident.dart';
 import 'map.dart';
 import 'incident.dart';
 import 'user_login.dart';
@@ -39,6 +43,22 @@ Future<void> initialize() async {
       clientId: dotenv.env['NCP_MAP_API_KEY_ID'],
       onAuthFailed: (e) => log("네이버맵 인증오류 : $e", name: "onAuthFailed")
   );
+
+  // 알림 권한 요청
+  if (await Permission.notification.isDenied) {
+    await Permission.notification.request();
+  }
+
+  // FCM 초기화 및 백그라운드 메시지 핸들러 등록
+  await Firebase.initializeApp();
+  FirebaseMessaging.instance.subscribeToTopic('alog-all').then((_) { });
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+}
+
+/// 백그라운드 및 종료 상태에서 수신한 FCM 메시지를 처리하는 핸들러
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  log('백그라운드 또는 종료 상태에서 메시지 수신: ${message.messageId}');
+  NotificationService().handleIncomingMessage(message);
 }
 
 class App extends StatelessWidget {
@@ -70,7 +90,7 @@ class _AppScreenState extends State<AppScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const NotificationsScreen(),
-    SafetyInfoScreen(),
+    const SafetyInfoScreen(),
     const IncidentScreen(),
   ];
 
@@ -87,6 +107,40 @@ class _AppScreenState extends State<AppScreen> {
     Icons.info,
     Icons.remove_red_eye
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // FCM 초기화 및 토큰 가져오기
+    FirebaseMessaging.instance.getToken().then((token) {
+      log("FCM 토큰: $token");
+      // 서버로 토큰 전송 로직 추가
+    });
+
+    // 포그라운드에서 메시지 처리
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      log('포그라운드에서 메시지 수신: ${message.messageId}');
+      NotificationService().handleIncomingMessage(message);
+    });
+
+    // 메시지 클릭 시 처리
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      log('클릭 후 앱 열림, 메시지: ${message.messageId}');
+      // 특정 화면으로 이동 등의 추가 로직 작성 가능
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // 데이터 초기화는 한 번만 실행
+    if (!_isDataLoaded) {
+      Provider.of<IssueProvider>(context, listen: false).fetchRecentIssues();
+      _isDataLoaded = true; // 초기화 완료
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,3 +230,33 @@ class _AppScreenState extends State<AppScreen> {
     );
   }
 }
+
+
+// 더미 위젯들
+// 본인 파트 따로 파일 만들어서 빼주면 감사링~
+// class NotificationsScreen extends StatelessWidget {
+//   const NotificationsScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("문자 모아보기 화면"));
+//   }
+// }
+//
+// class SafetyInfoScreen extends StatelessWidget {
+//   const SafetyInfoScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("안전 정보 화면"));
+//   }
+// }
+//
+// class IncidentScreen extends StatelessWidget {
+//   const IncidentScreen({Key? key}) : super(key: key);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Center(child: Text("사건·사고 화면"));
+//   }
+// }

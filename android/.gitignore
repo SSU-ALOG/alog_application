@@ -11,6 +11,3 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
-
-# Ignore Android strings file containing sensitive information
-android/app/src/main/res/values/strings.xml

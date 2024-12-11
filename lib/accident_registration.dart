@@ -53,7 +53,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       return;
     }
 
-    final issue = Issue(
+    final issue = Issue.fromUserInput(
       title: _titleController.text,
       category: _selectedCategory ?? '기타',
       description: _descriptionController.text,
@@ -123,8 +123,8 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
       var area3 = curAddr['results'][1]['region']['area3']['name'];
       var area4 = curAddr['results'][1]['region']['area4']['name'];
 
-      repArea= area1;
-      print("area1: " + area1);
+      repArea= '$area1 $area2 $area3';
+      print("repArea: " + repArea);
 
       // API 호출 결과를 TextField에 반영
       setState(() {
@@ -156,6 +156,7 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
@@ -181,124 +182,126 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(30.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 사고 제목
-            const Text(
-              '사고 제목',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(13.0),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(30.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 사고 제목
+              const Text(
+                '사고 제목',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13.0),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // 분류
-            const Text(
-              '분류',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              items: disasterCategories.map((category) {
-                return DropdownMenuItem(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategory = value;
-                });
-              },
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(13.0), // 둥근 모서리 설정
+              const SizedBox(height: 16),
+        
+              // 분류
+              const Text(
+                '분류',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                items: disasterCategories.map((category) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCategory = value;
+                  });
+                },
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13.0), // 둥근 모서리 설정
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // 위치
-            const Text(
-              '위치',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _locationController,
-              readOnly: true, // 사용자가 직접 수정 불가
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(13.0),
-                ),
-                hintText: '위치 가져오기',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () async {
-                    // 위치 가져오는 api
-                    await _fetchLocation();
-                  },
+              const SizedBox(height: 16),
+        
+              // 위치
+              const Text(
+                '위치',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _locationController,
+                readOnly: true, // 사용자가 직접 수정 불가
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13.0),
+                  ),
+                  hintText: '위치 가져오기',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () async {
+                      // 위치 가져오는 api
+                      await _fetchLocation();
+                    },
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // 상세 내용
-            const Text(
-              '상세 내용',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _descriptionController,
-              maxLines: 5,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(13.0),
-                ),
-                hintText: 'Tell us everything.',
+              const SizedBox(height: 16),
+        
+              // 상세 내용
+              const Text(
+                '상세 내용',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // 등록 버튼
-            Center(
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.85, // 화면 너비의 80%로 설정
-                child: ElevatedButton(
-                  onPressed: () async {
-                    // 등록 기능
-                    await _submitIssue();
-
-                    // 홈화면 전환
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6969),
-                    padding: const EdgeInsets.symmetric(vertical: 15), // 세로 padding만 설정
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(13.0),
+                  ),
+                  hintText: 'Tell us everything.',
+                ),
+              ),
+              const SizedBox(height: 20),
+        
+              // 등록 버튼
+              Center(
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.85, // 화면 너비의 80%로 설정
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      // 등록 기능
+                      await _submitIssue();
+        
+                      // 홈화면 전환
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6969),
+                      padding: const EdgeInsets.symmetric(vertical: 15), // 세로 padding만 설정
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                    child: const Text(
+                      '등록',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                   ),
-                  child: const Text(
-                    '등록',
-                    style: TextStyle(fontSize: 16, color: Colors.white),
-                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       // backgroundColor: Colors.white,
