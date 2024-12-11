@@ -257,6 +257,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _filteredMarkers.add(marker);
       controller.addOverlay(marker);
     }
+    _applyClustering(defaultZoomLevel);
   }
 
   // 현재 위치에서 각 마커까지의 거리 정보 추가
@@ -343,9 +344,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     }
 
-    if (currentZoomLevel < 14) {
-      _applyClustering(currentZoomLevel);
-    }
+    _applyClustering(currentZoomLevel);
 
     setState(() {});
   }
@@ -438,12 +437,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _clusterMarkers.clear();
 
     // 줌 레벨 14 이상 시 클러스터링 해제
-    if (zoomLevel >= 14) {
-      for (var marker in _filteredMarkers) {
-        marker.setIsVisible(true);
-      }
-      return;
-    }
+    // if (zoomLevel >= 14) {
+    //   for (var marker in _filteredMarkers) {
+    //     marker.setIsVisible(true);
+    //   }
+    //   return;
+    // }
 
     // 기본 마커 비활성화
     for (var marker in _filteredMarkers) {
@@ -505,7 +504,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (zoomLevel <= 10) return 4.0;
     if (zoomLevel <= 12) return 2.0;
     if (zoomLevel <= 13) return 0.6;
-    if (zoomLevel < 14) return 0.25;
+    if (zoomLevel < 14) return 0.1;
     return 0;
   }
 
