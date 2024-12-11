@@ -63,18 +63,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   List<NMarker> _clusterMarkers = [];
   List<Map<String, dynamic>> _currentContentList = [];
   List<Map<String, dynamic>> _contentList = [];
-  // List<Map<String, dynamic>> _contentList = [
-  //   {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-  //   {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
-  //   {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-  //   {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
-  //   {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
-  //   {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
-  //   {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
-  //   {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
-  //   {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
-  //   {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
-  // ];
 
   @override
   void initState() {
@@ -101,18 +89,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         _contentList = issueProvider.issues
             .where((issue) => issue.status != '상황종료')
             .map((issue) {
-          return {
-            "id": issue.issueId,
-            "title": issue.title,
-            "category": issue.category,
-            "description": issue.description ?? "내용이 없습니다.",
-            "latitude": issue.latitude,
-            "longitude": issue.longitude,
-            "view": 0,
-            "verified": issue.verified,
-          };
-        }).toList();
+              return {
+                "id": issue.issueId,
+                "title": issue.title,
+                "category": issue.category,
+                "description": issue.description ?? "내용이 없습니다.",
+                "latitude": issue.latitude,
+                "longitude": issue.longitude,
+                "view": 0,
+                "verified": issue.verified,
+              };
+            }).toList();
       });
+
+      _addContentMarkers();
+      // dev.log("_contentList updated: $_contentList", name: "MapScreen");
     }).catchError((error) {
       dev.log("Error loading issues: $error", name: "MapScreen");
     });
@@ -221,7 +212,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       double markerSize = 20 + sqrt(view);
 
       final marker = NMarker(
-        id: "marker_" + content['id'],
+        id: '${content['id']}',
         position: location,
         icon: await NOverlayImage.fromWidget(
           context: context,
@@ -257,7 +248,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _filteredMarkers.add(marker);
       controller.addOverlay(marker);
     }
-    _applyClustering(defaultZoomLevel);
+
+    _applyClustering(_zoomLevel);
   }
 
   // 현재 위치에서 각 마커까지의 거리 정보 추가
@@ -504,8 +496,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (zoomLevel <= 10) return 4.0;
     if (zoomLevel <= 12) return 2.0;
     if (zoomLevel <= 13) return 0.6;
-    if (zoomLevel < 14) return 0.1;
-    return 0;
+    if (zoomLevel < 14) return 0.25;
+    return 0.05;
   }
 
   // 클러스터 생성
@@ -583,7 +575,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               itemCount: cluster.markers.length,
                               itemBuilder: (context, index) {
                                 final content = _contentList.firstWhere(
-                                      (c) => c['title'] == cluster.markers[index].info.id,
+                                      (c) => '${c['id']}' == cluster.markers[index].info.id,
                                 );
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 1.0),
@@ -1068,7 +1060,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      _selectedContent?['title'] ?? '제목 없음',
+                      _selectedContent?['title'] ?? '사고 제목',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1092,8 +1084,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           // 사진 또는 영상
           GestureDetector(
             onTap: () {
-              var id = _selectedContent?['id'];
-              var title = _selectedContent?['title'];
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
               );
@@ -1165,8 +1155,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
-                  var id = _selectedContent?['id'];
-                  var title = _selectedContent?['title'];
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
                   );
