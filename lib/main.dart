@@ -1,13 +1,14 @@
 import 'dart:developer';
 
+import 'package:alog/providers/issue_provider.dart';
+import 'package:alog/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
-
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:provider/provider.dart';
 
 import 'accident_registration.dart';
 import 'incident.dart';
@@ -24,7 +25,15 @@ String? phoneNumber;
 
 void main() async {
   await initialize();
-  runApp(const App());
+  // runApp(const App());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => IssueProvider()),
+      ],
+      child: const App(),
+    ),
+  );
 }
 
 // 초기화 함수
@@ -45,9 +54,16 @@ Future<void> initialize() async {
     await Permission.notification.request();
   }
 
-  // FCM 초기화
+  // FCM 초기화 및 백그라운드 메시지 핸들러 등록
   await Firebase.initializeApp();
-  FirebaseMessaging.instance.subscribeToTopic('all');
+  FirebaseMessaging.instance.subscribeToTopic('alog-all').then((_) { });
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+}
+
+/// 백그라운드 및 종료 상태에서 수신한 FCM 메시지를 처리하는 핸들러
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  log('백그라운드 또는 종료 상태에서 메시지 수신: ${message.messageId}');
+  NotificationService().handleIncomingMessage(message);
 }
 
 class App extends StatelessWidget {
@@ -75,6 +91,7 @@ class AppScreen extends StatefulWidget {
 
 class _AppScreenState extends State<AppScreen> {
   int _selectedIndex = 0;
+  bool _isDataLoaded = false;
 
   final List<Widget> _screens = [
     const MapScreen(),
@@ -96,6 +113,40 @@ class _AppScreenState extends State<AppScreen> {
     Icons.info,
     Icons.remove_red_eye
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // FCM 초기화 및 토큰 가져오기
+    FirebaseMessaging.instance.getToken().then((token) {
+      log("FCM 토큰: $token");
+      // 서버로 토큰 전송 로직 추가
+    });
+
+    // 포그라운드에서 메시지 처리
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      log('포그라운드에서 메시지 수신: ${message.messageId}');
+      NotificationService().handleIncomingMessage(message);
+    });
+
+    // 메시지 클릭 시 처리
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      log('클릭 후 앱 열림, 메시지: ${message.messageId}');
+      // 특정 화면으로 이동 등의 추가 로직 작성 가능
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // 데이터 초기화는 한 번만 실행
+    if (!_isDataLoaded) {
+      Provider.of<IssueProvider>(context, listen: false).fetchRecentIssues();
+      _isDataLoaded = true; // 초기화 완료
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,14 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.0.2' // 최신 Gradle 버전
+        classpath 'com.google.gms:google-services:4.3.15' // Firebase Google Services
+    }
+}
+
 allprojects {
     repositories {
         google()

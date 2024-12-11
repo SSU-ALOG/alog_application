@@ -43,7 +43,7 @@ class Issue {
       issueId: json['id'],
       title: json['title'] ?? '제목 없음',
       category: json['category'] ?? '기타',
-      description: json['description'] ?? 'none',
+      description: json['description'] ?? '내용 없음',
       latitude: (json['latitude'] as num).toDouble(), // JSON 숫자를 double로 변환
       longitude: (json['longitude'] as num).toDouble(),
       date: DateTime.parse(json['date']), // 서버에서 반환된 ISO-8601 날짜 문자열 파싱

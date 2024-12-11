@@ -452,7 +452,7 @@ Future<List<Issue>> fetchAndSortIssues() async {
 
   // 가져온 데이터를 로그로 출력
   for (var issue in issues) {
-    dev.log('Fetched Issue: ${issue.toJson()}', name: 'fetchAndSortIssues');
+    // dev.log('Fetched Issue: ${issue.toJson()}', name: 'fetchAndSortIssues');
   }
 
   // sort

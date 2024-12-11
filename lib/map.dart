@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:developer' as dev;
 import 'dart:math';
 
+import 'package:alog/providers/issue_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
@@ -53,29 +55,67 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   bool _isExpanded = false;
   bool _isDetailView = false;
   bool _isSearching = false;
+  bool _isDataLoaded = false;
   NLatLng? _currentLocation;
   Map<String, dynamic>? _selectedContent;
   List<NMarker> _searchedMarkers = [];
   List<NMarker> _filteredMarkers = [];
   List<NMarker> _clusterMarkers = [];
   List<Map<String, dynamic>> _currentContentList = [];
-  List<Map<String, dynamic>> _contentList = [
-    {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-    {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
-    {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-    {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
-    {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
-    {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
-    {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
-    {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
-    {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
-    {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
-  ];
+  List<Map<String, dynamic>> _contentList = [];
+  // List<Map<String, dynamic>> _contentList = [
+  //   {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
+  //   {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
+  //   {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
+  //   {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
+  //   {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
+  //   {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
+  //   {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
+  //   {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
+  //   {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
+  //   {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
+  // ];
 
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_isDataLoaded) {
+      _loadData();
+      _isDataLoaded = true;
+    }
+  }
+
+  // IssueProvider에서 데이터 로드
+  void _loadData() {
+    final issueProvider = Provider.of<IssueProvider>(context, listen: false);
+
+    issueProvider.fetchRecentIssues().then((_) {
+      setState(() {
+        _contentList = issueProvider.issues
+            .where((issue) => issue.status != '상황종료')
+            .map((issue) {
+          return {
+            "id": issue.issueId,
+            "title": issue.title,
+            "category": issue.category,
+            "description": issue.description ?? "내용이 없습니다.",
+            "latitude": issue.latitude,
+            "longitude": issue.longitude,
+            "view": 0,
+            "verified": issue.verified,
+          };
+        }).toList();
+      });
+    }).catchError((error) {
+      dev.log("Error loading issues: $error", name: "MapScreen");
+    });
   }
 
   // 위치 권한 요청
@@ -181,7 +221,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       double markerSize = 20 + sqrt(view);
 
       final marker = NMarker(
-        id: content['title'], // id 값으로 변경해야 할듯
+        id: "marker_" + content['id'],
         position: location,
         icon: await NOverlayImage.fromWidget(
           context: context,
@@ -1029,7 +1069,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      _selectedContent?['title'] ?? '사고 제목',
+                      _selectedContent?['title'] ?? '제목 없음',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -1053,6 +1093,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           // 사진 또는 영상
           GestureDetector(
             onTap: () {
+              var id = _selectedContent?['id'];
+              var title = _selectedContent?['title'];
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
               );
@@ -1124,6 +1166,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
+                  var id = _selectedContent?['id'];
+                  var title = _selectedContent?['title'];
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
                   );
