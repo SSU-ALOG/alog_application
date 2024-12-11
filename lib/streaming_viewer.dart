@@ -20,12 +20,12 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
     super.initState();
     _initializePlayer();
     // 시청자가 입장할 때 호출
-    userJoined('user123', 'ls-20241203212555-vXxrx');
+    userJoined('alog화이팅', 'ls-20241203212555-vXxrx');
   }
 
   Future<void> _initializePlayer() async {
     const String liveStreamUrl =
-        'https://pendecky6003.edge.naverncp.com/live/video/ls-20241203212555-vXxrx/1080p-9-16/playlist.m3u8';
+        'https://github.com/SSU-ALOG/alog_application/raw/refs/heads/master/%EB%B0%A9%EC%86%A1%20%EC%8B%9C%EC%B2%AD%20%ED%99%94%EB%A9%B4%20%EC%9E%90%EB%A3%8C.mp4';
     _videoPlayerController = VideoPlayerController.network(liveStreamUrl);
     await _videoPlayerController.initialize();
 
@@ -50,7 +50,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
   @override
   void dispose() {
     // 시청자가 퇴장할 때 호출
-    userLeft('user123', 'ls-20241203212555-vXxrx');
+    userLeft('alog화이팅', 'ls-20241203212555-vXxrx');
     _videoPlayerController.dispose();
     _chewieController?.dispose();
     super.dispose();
@@ -213,11 +213,11 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
                         controller: _commentController,
                         decoration: InputDecoration(
                           hintText: 'Comment',
-                          hintStyle: TextStyle(color: Colors.white),
+                          hintStyle: TextStyle(color: Colors.black),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
                         ),
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black),
                       ),
                     ),
                     IconButton(
@@ -225,7 +225,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
                       onPressed: () {
                         if (_commentController.text.isNotEmpty) {
                           String messageText = _commentController.text;
-                          String userId = 'user123';  // 이 값은 실제 사용자 ID로 변경
+                          String userId = 'alog화이팅';  // 이 값은 실제 사용자 ID로 변경
                           String channelId = 'ls-20241203212555-vXxrx';  // 해당 방송의 채널 ID
 
                           // sendMessage 함수 호출
@@ -267,7 +267,7 @@ Future<void> userJoined(String userId, String channelId) async {
   }
 }
 
-// 사용자가 방송 퇴장 시, 해당 시청자 정보를 Firestore에서 삭제
+// 사용자가 방송 퇴장 시, 해당 시청자 정보를 Firestore에서 삭제u
 Future<void> userLeft(String userId, String channelId) async {
   try {
     // `Viewers` 컬렉션에서 해당 유저의 문서 삭제

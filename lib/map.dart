@@ -57,9 +57,9 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   List<Map<String, dynamic>> _filteredContentList = [];
   List<Map<String, dynamic>> _contentList = [
     {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-    {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
+    {"title": "숭실대 정보과학관", "category": "안전사고", "description": "라이브 스트리밍 테스트", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
     {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-    {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
+    {"title": "숭실대입구역 폭설", "category": "안전사고", "description": "숭실대입구역 인근 폭설", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
     {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
     {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
     {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
@@ -115,8 +115,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        // _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
-        _currentLocation = defaultLocation; // defalut로 학교 위치
+         _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
+        //_currentLocation = defaultLocation; // defalut로 학교 위치
       });
     } catch (e) {
       setState(() {
@@ -770,7 +770,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Container(
-                    height: screenHeight - extraHeight, // screenHeight - extraHeight - 163 (수정)
+                    height: screenHeight - extraHeight, // screenHeight - extraHeight - 106 (수정)
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                       color: Colors.white,
@@ -974,7 +974,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
 
   // 상세 정보 뷰 빌더
   Widget _buildDetailView() {
-    String? imageUrl = _selectedContent?['imageUrl'];
+    String? imageUrl = _selectedContent?['imagePath'];
     NLatLng? contentLocation = NLatLng(_selectedContent!['latitude'], _selectedContent!['longitude']);
     bool isVerified = _selectedContent?['verified'] ?? false;
     bool isWithin1km = contentLocation != null && _currentLocation != null
@@ -1040,7 +1040,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 borderRadius: BorderRadius.circular(12),
                 image: imageUrl != null
                     ? DecorationImage(
-                  image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
+                  image: AssetImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
                   fit: BoxFit.cover,
                 )
                     : null,

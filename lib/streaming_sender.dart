@@ -340,7 +340,7 @@ Future<bool> deleteChannel(String? channelId) async {
 }
 
 // 방송 상태 정보 조회
-Future<Map<String, dynamic>?> getVodChannelInfo(String? channelId) async {
+Future<Map<String, dynamic>?> getChannelInfo(String? channelId) async {
   String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? ''; // .env 파일에서 가져옴
   String secretKey = dotenv.env['SECRET_KEY'] ?? ''; // .env 파일에서 가져옴
   String method = 'GET';
@@ -381,13 +381,11 @@ Future<Map<String, dynamic>?> getVodChannelInfo(String? channelId) async {
 }
 
 // ServiceUrl 추출
-Future<String?> getVODServiceUrl(String? channelId) async {
+Future<String?> getServiceUrl(String? channelId) async {
   String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';  // .env 파일에서 가져옴
   String secretKey = dotenv.env['SECRET_KEY'] ?? '';     // .env 파일에서 가져옴
   String method = 'GET';
-  //String uri = '/api/v2/channels/$channelId/serviceUrls?serviceUrlType=GENERAL';
-  //String encodedChannelId = Uri.encodeComponent(channelId ?? 'defaultChannelId');
-  String uri = '/api/v2/vod/channels/$channelId/serviceUrls?serviceUrlType=THUMBNAIL';
+  String uri = '/api/v2/channels/$channelId/serviceUrls?serviceUrlType=GENERAL';
   String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
 
   // 서명 생성
@@ -402,15 +400,14 @@ Future<String?> getVODServiceUrl(String? channelId) async {
     'x-ncp-region_code': 'KR',
   };
 
-  String define = '/api/v2/vod/channels/$channelId/serviceUrls';
+  String define = '/api/v2/channels/$channelId/serviceUrls';
   // VOD 타입 파라미터
   Map<String, dynamic> queryParams = {
-    'serviceUrlType': 'THUMBNAIL',
+    'serviceUrlType': 'GENERAL',
   };
 
   try {
     // 요청 URL 설정
-    //var url = Uri.https('livestation.apigw.ntruss.com', uri, queryParams);
     var url = Uri.https('livestation.apigw.ntruss.com', define, queryParams);
     var response = await http.get(url, headers: headers);
 
@@ -422,25 +419,85 @@ Future<String?> getVODServiceUrl(String? channelId) async {
     if (response.statusCode == 200) {
       // 응답에서 "name": "720p-16-9"에 해당하는 URL만 추출
       var responseData = jsonDecode(response.body);
-      debugPrint('전체 응답 데이터: $responseData');
-      // var contentList = responseData['content'] as List;
-      //
-      // // "name": "720p-16-9"에 해당하는 URL을 찾음
-      // for (var item in contentList) {
-      //   if (item['name'] == '720p-16-9') {
-      //     String vodUrl = item['url'];
-      //     debugPrint('VOD URL: $vodUrl');
-      //     return vodUrl;  // "720p-16-9"에 해당하는 URL 반환
-      //   }
-      // }
-      // debugPrint('720p-16-9 URL을 찾을 수 없습니다.');
-      // return null;
+      // debugPrint('전체 응답 데이터: $responseData');
+      var contentList = responseData['content'] as List;
+
+      // "name": "720p-16-9"에 해당하는 URL을 찾음
+      for (var item in contentList) {
+        if (item['name'] == '720p-9-16') {
+          String ServiceUrl = item['url'];
+          debugPrint('Service URL: $ServiceUrl');
+          return ServiceUrl;  // "720p-16-9"에 해당하는 URL 반환
+        }
+      }
+      debugPrint('720p-9-16 URL을 찾을 수 없습니다.');
+      return null;
     } else {
-      debugPrint('VOD 서비스 URL 요청 실패: 상태 코드 ${response.statusCode}');
+      debugPrint('서비스 URL 요청 실패: 상태 코드 ${response.statusCode}');
       return null;
     }
   } catch (e) {
-    debugPrint('VOD 서비스 URL 요청 중 예외 발생: $e');
+    debugPrint('서비스 URL 요청 중 예외 발생: $e');
+    return null;
+  }
+}
+
+// 썸네일 추출
+Future<String?> getThumbnailUrl(String? channelId) async {
+  String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';  // .env 파일에서 가져옴
+  String secretKey = dotenv.env['SECRET_KEY'] ?? '';     // .env 파일에서 가져옴
+  String method = 'GET';
+  String uri = '/api/v2/channels/$channelId/serviceUrls?serviceUrlType=THUMBNAIL';
+  String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+
+  // 서명 생성
+  String signature = generateSignature(secretKey, method, uri, timestamp, accessKey);
+
+  // 요청 헤더 설정
+  Map<String, String> headers = {
+    'Content-Type': 'application/json',
+    'x-ncp-iam-access-key': accessKey,
+    'x-ncp-apigw-timestamp': timestamp,
+    'x-ncp-apigw-signature-v2': signature,
+    'x-ncp-region_code': 'KR',
+  };
+
+  String define = '/api/v2/channels/$channelId/serviceUrls';
+  // VOD 타입 파라미터
+  Map<String, dynamic> queryParams = {
+    'serviceUrlType': 'THUMBNAIL',
+  };
+
+  try {
+    // 요청 URL 설정
+    var url = Uri.https('livestation.apigw.ntruss.com', define, queryParams);
+    var response = await http.get(url, headers: headers);
+
+    // 디버깅 로그
+    debugPrint("Request URL: $url");
+    debugPrint("Response status: ${response.statusCode}");
+    debugPrint("Response body: ${response.body}");
+
+    if (response.statusCode == 200) {
+      // 응답에서 "content" 리스트 추출
+      var responseData = jsonDecode(response.body);
+      var contentList = responseData['content'] as List;
+
+      // 첫 번째 항목의 URL을 가져옴
+      if (contentList.isNotEmpty) {
+        String thumbnailUrl = contentList[0]['url'];  // 첫 번째 항목의 URL
+        debugPrint('Thumbnail URL: $thumbnailUrl');
+        return thumbnailUrl;  // 첫 번째 URL 반환
+      } else {
+        debugPrint('content 리스트가 비어 있습니다.');
+        return null;
+      }
+    } else {
+      debugPrint('썸네일 URL 요청 실패: 상태 코드 ${response.statusCode}');
+      return null;
+    }
+  } catch (e) {
+    debugPrint('썸네일 URL 요청 중 예외 발생: $e');
     return null;
   }
 }
@@ -789,12 +846,12 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   // 방송 시작 시 documentId 받아오기
   String? documentId;  // documentId를 로컬 변수로 저장
 
-  Future<void> _startBroadcast(String issueId, String finalUrl, String thumbnailUrl) async {
+  Future<void> _startBroadcast(String issueId, String liveUrl, String thumbnailUrl) async {
     try {
       // Firestore에 방송 정보 저장
       var docRef = await FirebaseFirestore.instance.collection('ServiceURL').add({
         'issueId': issueId,         // Firestore에 issueId 저장
-        'liveUrl': finalUrl,        // 방송 URL
+        'liveUrl': liveUrl,        // 방송 URL
         'thumbnailUrl': thumbnailUrl, // 썸네일 URL
         'isLive': true,             // 방송 상태는 true
         'createdAt': FieldValue.serverTimestamp(),  // 생성 시간
@@ -852,32 +909,32 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                 bool shouldStop = await _showStopStreamingDialog(context);
                 if (shouldStop) {
                   await stopVideoStreaming();
-                  await Future.delayed(Duration(seconds: 5)); // 5초 대기
+
+                  //await Future.delayed(Duration(seconds: 5)); // 5초 대기
                   //deleteChannel(channelId);
                   await stopBroadcast();  // 방송 종료 시 stopBroadcast 호출
                   setState(() {}); // 상태 갱신
                 }
               } else {
                 // 스트리밍 시작
-                String? finalUrl = await startVideoStreaming(); // startVideoStreaming 호출
+                //String? finalUrl = await startVideoStreaming(); // startVideoStreaming 호출
+                String? channelId = await startVideoStreaming();
 
-                await Future.delayed(Duration(seconds: 5));
-                // 송출 url 조회
-                //String? vodUrl = await getVODServiceUrl(channelId);
+                //await Future.delayed(Duration(seconds: 5));
 
-                if (finalUrl != null) {
+                if (channelId != null) {
                   setState(() {});
                   // 방송 정보를 Firestore에 저장
-                  await Future.delayed(Duration(seconds: 10));
-                  debugPrint("************************************ Channel ID: $channelId ************************************ ");
+                  //await Future.delayed(Duration(seconds: 10));
+                  //debugPrint("************************************ Channel ID: $channelId ************************************ ");
 
-                  await getVodChannelInfo(channelId);
-                  await getVODServiceUrl(channelId);
-                  String thumbnailUrl = 'https://example.com/thumbnail.jpg'; // 썸네일 URL을 여기에 넣으세요
+                  //await getVodChannelInfo(channelId);
+                  String ServiceUrl = await getServiceUrl(channelId) ?? ''; // 송출 url 조회
+                  String thumbnailUrl = await getThumbnailUrl(channelId) ?? ''; // 썸네일 URL 조회
                   String? issueId = '1';
-                  //await _startBroadcast(issueId, finalUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
+                  await _startBroadcast(issueId, ServiceUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
 
-                  debugPrint("Streaming started with URL: $finalUrl");
+                  debugPrint("Streaming started with URL: $ServiceUrl");
                 } else {
                   debugPrint("Failed to start streaming.");
                 }
@@ -1137,7 +1194,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
             title: Text('Url to Stream to'),
             content: TextField(
               controller: _textFieldController..text = result,
-              decoration: InputDecoration(hintText: "Url to Stream to"),
+              decoration: InputDecoration(hintText: "방송 시작"),
               onChanged: (String str) => result = str,
             ),
             actions: <Widget>[
@@ -1224,7 +1281,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     }
 
     // 성공적으로 시작된 송출 URL 반환
-    return url;
+    //return url;
+    return channelId;
   }
 
   Future<void> stopVideoStreaming() async {

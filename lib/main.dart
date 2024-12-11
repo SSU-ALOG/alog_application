@@ -48,6 +48,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'App',
+      debugShowCheckedModeBanner: false, // 우상단 DEBUG 띠 없앰
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
