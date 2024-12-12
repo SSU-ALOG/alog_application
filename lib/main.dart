@@ -1,11 +1,13 @@
 import 'dart:developer';
 
+import 'package:alog/models/issue.dart';
 import 'package:alog/providers/issue_provider.dart';
 import 'package:alog/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +24,8 @@ bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
 String? email;
 String? phoneNumber;
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   await initialize();
@@ -52,6 +56,7 @@ Future<void> initialize() async {
   // 알림 권한 요청
   if (await Permission.notification.isDenied) {
     await Permission.notification.request();
+    _createAndroidNotificationChannel();
   }
 
   // FCM 초기화 및 백그라운드 메시지 핸들러 등록
@@ -60,10 +65,22 @@ Future<void> initialize() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 }
 
-/// 백그라운드 및 종료 상태에서 수신한 FCM 메시지를 처리하는 핸들러
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  log('백그라운드 또는 종료 상태에서 메시지 수신: ${message.messageId}');
-  NotificationService().handleIncomingMessage(message);
+  log('백그라운드 또는 종료 상태에서 메시지 수신: ${message.messageId}', name: "_firebaseMessagingBackgroundHandler");
+  // NotificationService().handleIncomingMessage(message);
+}
+
+Future<void> _createAndroidNotificationChannel() async {
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'high_importance_channel',
+    'high_importance_channel',
+    importance: Importance.high,
+  );
+
+  await FlutterLocalNotificationsPlugin()
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
 }
 
 class App extends StatelessWidget {
@@ -72,6 +89,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'App',
       theme: ThemeData(
@@ -120,20 +138,33 @@ class _AppScreenState extends State<AppScreen> {
 
     // FCM 초기화 및 토큰 가져오기
     FirebaseMessaging.instance.getToken().then((token) {
-      log("FCM 토큰: $token");
+      log("FCM 토큰: $token", name: "_AppScreenState");
       // 서버로 토큰 전송 로직 추가
     });
 
     // 포그라운드에서 메시지 처리
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      log('포그라운드에서 메시지 수신: ${message.messageId}');
+      log('포그라운드에서 메시지 수신: ${message.messageId}', name: "_AppScreenState");
       NotificationService().handleIncomingMessage(message);
     });
 
     // 메시지 클릭 시 처리
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      log('클릭 후 앱 열림, 메시지: ${message.messageId}');
-      // 특정 화면으로 이동 등의 추가 로직 작성 가능
+      log('클릭 후 앱 열림, 메시지: ${message.messageId}', name: "_AppScreenState");
+
+      final issueId = message.data['issueId'];
+
+      if (issueId != null) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AppScreen(),
+          ),
+          (route) => false, // 이전 모든 화면 제거
+        );
+      } else {
+        log('데이터가 없는 메시지: ${message.data}', name: "_AppScreenState");
+      }
     });
   }
 
@@ -141,10 +172,9 @@ class _AppScreenState extends State<AppScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // 데이터 초기화는 한 번만 실행
     if (!_isDataLoaded) {
       Provider.of<IssueProvider>(context, listen: false).fetchRecentIssues();
-      _isDataLoaded = true; // 초기화 완료
+      _isDataLoaded = true;
     }
   }
 

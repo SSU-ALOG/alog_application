@@ -4,9 +4,6 @@ import 'package:flutter/material.dart';
 import '../models/issue.dart';
 import '../services/api_service.dart';
 
-// 데이터 사용시 아래와 같이 작성
-// final issues = Provider.of<IssueProvider>(context).issues;
-
 class IssueProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
   List<Issue> _issues = [];
@@ -22,9 +19,17 @@ class IssueProvider with ChangeNotifier {
         log('Fetched Issue: ${issue.toJson()}', name: 'IssueProvider');
       }
 
-      notifyListeners(); // 데이터 변경 알림
+      notifyListeners();
     } catch (e) {
       debugPrint("Error fetching recent issues: $e");
     }
+  }
+
+  void addIssue(Issue newIssue) {
+    _issues.add(newIssue);
+
+    log('Added Issue: ${newIssue.toJson()}', name: 'IssueProvider');
+
+    notifyListeners();
   }
 }

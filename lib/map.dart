@@ -75,38 +75,81 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     super.didChangeDependencies();
 
     if (!_isDataLoaded) {
-      _loadData();
+      _initializeData();
       _isDataLoaded = true;
     }
   }
 
-  // IssueProvider에서 데이터 로드
-  void _loadData() {
+  void _initializeData() {
     final issueProvider = Provider.of<IssueProvider>(context, listen: false);
 
-    issueProvider.fetchRecentIssues().then((_) {
-      setState(() {
-        _contentList = issueProvider.issues
-            .where((issue) => issue.status != '상황종료')
-            .map((issue) {
-              return {
-                "id": issue.issueId,
-                "title": issue.title,
-                "category": issue.category,
-                "description": issue.description ?? "내용이 없습니다.",
-                "latitude": issue.latitude,
-                "longitude": issue.longitude,
-                "view": 0,
-                "verified": issue.verified,
-              };
-            }).toList();
-      });
-
+    issueProvider.addListener(() {
+      _updateContentList(issueProvider);
       _addContentMarkers();
-      // dev.log("_contentList updated: $_contentList", name: "MapScreen");
-    }).catchError((error) {
-      dev.log("Error loading issues: $error", name: "MapScreen");
+      if (_currentLocation != null) {
+        _calculateDistances();
+      }
     });
+  }
+
+  void _updateContentList(IssueProvider issueProvider) {
+    setState(() {
+      _contentList = issueProvider.issues
+          .where((issue) => issue.status != '상황종료')
+          .map((issue) {
+        return {
+          "id": issue.issueId,
+          "title": issue.title,
+          "category": issue.category,
+          "description": issue.description ?? "내용이 없습니다.",
+          "latitude": issue.latitude,
+          "longitude": issue.longitude,
+          "view": 0,
+          "verified": issue.verified,
+        };
+      }).toList();
+    });
+    dev.log("Content List: $_contentList", name: "MapScreen");
+  }
+
+  // 알림에 의한 특정 이슈 강조
+  Future<void> _highlightIssue(String issueId) async {
+    final issue = _contentList.firstWhere((content) => '${content['id']}' == issueId, orElse: () => {});
+
+    if (issue.isEmpty) {
+      dev.log('해당 issueId를 찾을 수 없습니다: $issueId', name: '_highlightIssue');
+      return;
+    }
+    dev.log('알림에 의한 issueId: $issueId', name: '_highlightIssue');
+
+    setState(() {
+      _selectedContent = issue;
+      _isDetailView = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 50), () {
+      _draggableController.animateTo(
+        maxHeightRatio,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ).then((_) {
+        dev.log("DraggableScrollableSheet expanded for issueId: $issueId", name: "_highlightIssue");
+      }).catchError((error) {
+        dev.log("Failed to expand DraggableScrollableSheet for issueId: $issueId: $error", name: "_highlightIssue");
+      });
+    });
+
+    // 지도 중심을 해당 이슈 위치로 이동
+    final NLatLng location = NLatLng(issue['latitude'], issue['longitude']);
+    final NaverMapController controller = await mapControllerCompleter.future;
+    controller.updateCamera(
+      NCameraUpdate.fromCameraPosition(
+        NCameraPosition(
+          target: location,
+          zoom: defaultZoomLevel,
+        ),
+      ),
+    );
   }
 
   // 위치 권한 요청
@@ -174,7 +217,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ),
       );
       _addCurrentLocationMarker();
-      _addContentMarkers();
       _calculateDistances();
     }
   }
@@ -203,9 +245,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 콘텐츠 마커 추가
   void _addContentMarkers() async {
     final NaverMapController controller = await mapControllerCompleter.future;
-    _markers.clear();
 
     for (var content in _contentList) {
+      if (_markers.any((marker) => marker.info.id == '${content['id']}')) {
+        continue;
+      }
+      // dev.log("create marker: ${content['id']}", name: "_addContentMarkers");
+
       final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       final int view = content['view'] ?? 10;
 
@@ -326,7 +372,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _filteredMarkers.clear();
 
     for (var marker in _searchedMarkers) {
-      final matchingContent = _contentList.firstWhere((content) => content['title'] == marker.info.id);
+      final matchingContent = _contentList.firstWhere((content) => '${content['id']}' == marker.info.id);
       final isVisible = _selectedFilters.contains('ALL') || _selectedFilters.contains(matchingContent['category']);
       marker.setIsVisible(isVisible);
 
@@ -385,7 +431,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _searchedMarkers.clear();
     for (var content in _currentContentList) {
       final matchingMarkers = _markers.where(
-              (marker) => marker.info.id == content['title']
+              (marker) => marker.info.id == '${content['id']}'
       ).toList();
 
       _searchedMarkers.addAll(matchingMarkers);
@@ -485,6 +531,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return true;
         });
 
+        // dev.log("create cluster marker: cluster_${clusterCenter.latitude}_${clusterCenter.longitude}", name: "_applyClustering");
         _clusterMarkers.add(clusterMarker);
         controller.addOverlay(clusterMarker);
       }
@@ -1084,6 +1131,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           // 사진 또는 영상
           GestureDetector(
             onTap: () {
+              var id = _selectedContent?['id'];
+              var title = _selectedContent?['title'];
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
               );
@@ -1155,6 +1204,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
+                  var id = _selectedContent?['id'];
+                  var title = _selectedContent?['title'];
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
                   );
