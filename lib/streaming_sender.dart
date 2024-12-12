@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'main.dart';
+import 'package:provider/provider.dart';
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -11,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_data.dart'; // UserData 클래스가 정의된 파일
 
 // signiture 생성 함수
 String generateSignature(String secretKey, String method, String uri, String timestamp, String accessKey) {
@@ -530,6 +532,17 @@ Future<void> endBroadcast(String documentId) async {
 List<CameraDescription> cameras = [];
 
 class LiveStreamStartScreen extends StatefulWidget {
+
+  // 상세보기 창의 이슈번호와 제목을 받아옴
+  final String? id;
+  final String? title;
+
+  const LiveStreamStartScreen({
+    Key? key,
+    this.id,
+    this.title,
+  }) : super(key: key);
+
   @override
   _LiveStreamStartScreenState createState() => _LiveStreamStartScreenState();
 }
@@ -552,6 +565,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   bool isVisible = true;
 
   String? channelId;
+  String? userId;
+
 
  // bool get isControllerInitialized => controller?.value.isInitialized ?? false;
   bool get isStreaming => controller?.value.isStreamingVideoRtmp ?? false;
@@ -560,6 +575,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
   bool _isControllerInitialized = false;
   bool get isControllerInitialized => controller?.value.isInitialized ?? _isControllerInitialized;
+
   set isControllerInitialized(bool value) {
     setState(() {
       _isControllerInitialized = value;
@@ -572,6 +588,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     super.initState();
     initializeCamera();  // 카메라 초기화를 initState에서 호출
     WidgetsBinding.instance.addObserver(this);
+
+    userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
   }
 
   void initializeCamera() async {
@@ -632,21 +650,43 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // 안드로이드 자체 디바이스에서 뒤로가기 로직
+  Future<bool> _onWillPop() async {
+    if (isStreaming) {
+      // 스트리밍 종료 팝업
+      bool shouldStop = await _showStopStreamingDialog(context);
+
+      if (shouldStop) {
+        await stopVideoStreaming(); // 스트리밍 종료
+        await stopBroadcast();      // 방송 종료
+        setState(() {});
+        return true; // 뒤로가기 허용
+      } else {
+        return false; // 뒤로가기 취소
+      }
+    } else {
+      return true; // 바로 뒤로가기 허용
+    }
+  }
+
   // 위젯 분리
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double chatHeight = screenHeight / 3;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
-      body: Stack(
-        children: [
-          Positioned.fill(child: _buildCameraPreview()),
-          _buildChatSection(chatHeight),
-          _buildActionButtons(),
-        ],
+    return WillPopScope(
+      onWillPop: _onWillPop, // 뒤로가기 버튼 동작 정의
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: _buildAppBar(),
+        body: Stack(
+          children: [
+            Positioned.fill(child: _buildCameraPreview()),
+            _buildChatSection(chatHeight),
+            _buildActionButtons(),
+          ],
+        ),
       ),
     );
   }
@@ -658,12 +698,24 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       elevation: 0,
       leading: IconButton(
         icon: Icon(Icons.arrow_back_ios, color: Colors.black),
-        onPressed: () {
-          Navigator.pop(context);
+        onPressed: () async {
+          if (isStreaming) {
+            // 스트리밍 종료 팝업
+            bool shouldStop = await _showStopStreamingDialog(context);
+
+            if (shouldStop) {
+              await stopVideoStreaming(); // 스트리밍 종료
+              await stopBroadcast();      // 방송 종료
+              setState(() {});            // 상태 갱신
+              Navigator.pop(context);     // 뒤로가기
+            }
+          } else {
+            Navigator.pop(context);       // 바로 뒤로가기
+          }
         },
       ),
       title: Text(
-        '사고 제목',
+        widget.title ?? '사고 제목', // widget.title이 null일 경우 기본값으로 '사고 제목' 사용
         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
@@ -674,7 +726,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('Viewers')
-                .where('channelId', isEqualTo: 'ls-20241203212555-vXxrx')  // 특정 채널에 대한 시청자 정보
+                .where('channelId')  // 특정 채널에 대한 시청자 정보
                 .snapshots(),  // 실시간으로 데이터 스트림을 받아옵니다.
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -817,15 +869,15 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                       onPressed: () {
                         if (_commentController.text.isNotEmpty) {
                           String messageText = _commentController.text;
-                          String userId = 'user123';  // 이 값은 실제 사용자 ID로 변경
-                          String channelId = 'ls-20241203212555-vXxrx';  // 해당 방송의 채널 ID
+                          String currentUserId = userId ?? 'defaultUser';
+                          String currentChannelId = channelId ?? '0';
 
                           // sendMessage 함수 호출
-                          sendMessage(userId, channelId, messageText);
+                          sendMessage(currentUserId, currentChannelId, messageText);
 
                           setState(() {
                             messages.insert(0, {
-                              'user': userId,
+                              'user': currentUserId,
                               'message': messageText,
                             });
                             _commentController.clear();  // 메시지 전송 후 입력 필드 비우기
@@ -931,7 +983,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                   //await getVodChannelInfo(channelId);
                   String ServiceUrl = await getServiceUrl(channelId) ?? ''; // 송출 url 조회
                   String thumbnailUrl = await getThumbnailUrl(channelId) ?? ''; // 썸네일 URL 조회
-                  String? issueId = '1';
+                  String? issueId = widget.id ?? '0'; // 디비 연결안되어 있어서 현재 0으로 가져와지는거 정상
                   await _startBroadcast(issueId, ServiceUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
 
                   debugPrint("Streaming started with URL: $ServiceUrl");
@@ -1101,12 +1153,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   // 새로운 카메라를 선택하고, 선택된 카메라에 대한 초기화와 상태 변화를 UI에 반영
   Future<void> onNewCameraSelected(CameraDescription? cameraDescription) async {
     if (cameraDescription == null) return;
-    print('11111');
 
     if (controller != null) {
       await stopVideoStreaming();
       await controller?.dispose();
-      print('22222');
     }
 
     controller = CameraController(
@@ -1116,15 +1166,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       androidUseOpenGL: useOpenGL,
     );
 
-    print('33333');
-
     controller!.addListener(() async {
       if (mounted) setState(() {});
 
-      print('44444');
-
       if (controller != null) {
-        print('55555');
         if (controller!.value.hasError) {
           print('Camera error ${controller!.value.errorDescription}');
           await stopVideoStreaming();
@@ -1138,7 +1183,6 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
               await stopVideoStreaming();
             }
           } catch (e) {
-            print('66666');
             print(e);
           }
         }
@@ -1191,10 +1235,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: Text('Url to Stream to'),
+            title: Text('방송 시작 URL'),
             content: TextField(
               controller: _textFieldController..text = result,
-              decoration: InputDecoration(hintText: "방송 시작"),
+              decoration: InputDecoration(hintText: "Url to Stream to"),
               onChanged: (String str) => result = str,
             ),
             actions: <Widget>[
@@ -1241,13 +1285,15 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     // RTMP URL 생성
     String myUrl;
     try {
-      // URL 생성 (AlertDialog 호출)
-      channelId = await createChannel(); // 채널 생성
-      if (channelId == null) {
-        debugPrint('Error: Failed to create a channel.');
-        return null;
-      }
+      String? newChannelId = await createChannel();
+      setState(() {
+        channelId = newChannelId; // 상태 업데이트
+      });
+    } catch (e) {
+      print('채널 생성 실패 : $e');
+    }
 
+    try {
       // 채널 정보를 사용하여 스트림 키 가져오기
       String? streamKey = await getStreamKey(channelId);
       if (streamKey == null) {
@@ -1332,5 +1378,31 @@ Future<void> sendMessage(String userId, String channelId, String messageText) as
     print("Message sent");
   } catch (e) {
     print("Error sending message: $e");
+  }
+}
+
+// firestore에서 썸네일 가져와서 반환
+Future<String?> getFirestoreThumbnail(String issueId) async {
+  try {
+    // Firestore에서 `serviceURL` 컬렉션에 대한 쿼리
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('serviceURL')  // 컬렉션 이름
+        .where('issueId', isEqualTo: issueId)  // `issueId`가 일치하는 문서
+        .where('isLive', isEqualTo: true)  // `isLive`가 true인 문서
+        .get();  // 쿼리 실행
+
+    // 쿼리 결과가 있는지 확인
+    if (snapshot.docs.isNotEmpty) {
+      // 첫 번째 문서를 가져오고 `thumbnailUrl` 반환
+      var document = snapshot.docs.first;
+      return document['thumbnailUrl'];  // `thumbnailUrl` 값을 반환
+    } else {
+      // 일치하는 문서가 없으면 null 반환
+      return null;
+    }
+  } catch (e) {
+    // 에러가 발생하면 에러 메시지 출력
+    print("Error fetching data: $e");
+    return null;
   }
 }

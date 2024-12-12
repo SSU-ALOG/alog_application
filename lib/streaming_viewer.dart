@@ -2,8 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
+
+import 'user_data.dart'; // UserData 클래스가 정의된 파일
 
 class LiveStreamWatchScreen extends StatefulWidget {
+  // 상세보기 창의 이슈번호와 제목을 받아옴
+  final String? id;
+  final String? title;
+
+  const LiveStreamWatchScreen({
+    Key? key,
+    this.id,
+    this.title,
+  }) : super(key: key);
+
   @override
   _LiveStreamWatchScreenState createState() => _LiveStreamWatchScreenState();
 }
@@ -15,12 +28,16 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
   late VideoPlayerController _videoPlayerController;
   ChewieController? _chewieController;
 
+  String? userId;
+
   @override
   void initState() {
     super.initState();
     _initializePlayer();
+
+    userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
     // 시청자가 입장할 때 호출
-    userJoined('alog화이팅', 'ls-20241203212555-vXxrx');
+    userJoined(userId ?? 'defaultUserId', 'ls-20241203212555-vXxrx');
   }
 
   Future<void> _initializePlayer() async {
@@ -50,7 +67,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
   @override
   void dispose() {
     // 시청자가 퇴장할 때 호출
-    userLeft('alog화이팅', 'ls-20241203212555-vXxrx');
+    userLeft(userId ?? 'defaultUserId', 'ls-20241203212555-vXxrx');
     _videoPlayerController.dispose();
     _chewieController?.dispose();
     super.dispose();
@@ -85,7 +102,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
         },
       ),
       title: Text(
-        '사고 제목',
+        widget.title ?? '사고 제목',
         style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
@@ -225,15 +242,15 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
                       onPressed: () {
                         if (_commentController.text.isNotEmpty) {
                           String messageText = _commentController.text;
-                          String userId = 'alog화이팅';  // 이 값은 실제 사용자 ID로 변경
-                          String channelId = 'ls-20241203212555-vXxrx';  // 해당 방송의 채널 ID
+                          String currentUserId =  userId ?? 'defaultUser';  // 이 값은 실제 사용자 ID로 변경
+                          String currentChannelId = 'ls-20241203212555-vXxrx';  // 해당 방송의 채널 ID
 
                           // sendMessage 함수 호출
-                          sendMessage(userId, channelId, messageText);
+                          sendMessage(currentUserId, currentChannelId, messageText);
 
                           setState(() {
                             messages.insert(0, {
-                              'user': userId,
+                              'user': currentUserId,
                               'message': messageText,
                             });
                             _commentController.clear();  // 메시지 전송 후 입력 필드 비우기

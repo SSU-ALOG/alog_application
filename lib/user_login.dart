@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
 
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'user_info.dart';
 import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
-
-// import 'package:flutter_naver_login/flutter_naver_login.dart';
-
-// final GlobalKey<ScaffoldMessengerState> snackbarKey =
-//     GlobalKey<ScaffoldMessengerState>();
+import 'user_data.dart'; // UserData 클래스가 정의된 파일
 
 class UserLoginScreen extends StatefulWidget {
   @override
@@ -31,13 +28,17 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       print("accessToken $accessToken");
       print("tokenType $tokenType");
 
-      // 사용자 정보 확인
-      setState(() {
-        isLogin = true;
-        name = res.account.nickname;  // 사용자 이름(닉네임)
-        email = res.account.email;    // 이메일
-        phoneNumber = res.account.mobile;  // 전화번호
-      });
+      // (로그인 후 받아온 데이터)
+        final name = res.account.nickname;  // 사용자 이름(닉네임)
+        final email = res.account.email;    // 이메일
+        final phoneNumber = res.account.mobile;  // 전화번호
+
+      // UserData를 업데이트하여 로그인 처리
+      Provider.of<UserData>(context, listen: false).login(
+        name,
+        email,
+        phoneNumber,
+      );
 
       // 로그인 후 회원정보 화면으로 이동
       Navigator.of(context).pushReplacement(

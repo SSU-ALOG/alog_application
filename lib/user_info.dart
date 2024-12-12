@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
+import 'package:provider/provider.dart';
 
 import 'user_login.dart';
 import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
+import 'user_data.dart'; // UserData 클래스가 정의된 파일
 
 final GlobalKey<ScaffoldMessengerState> snackbarKey =
     GlobalKey<ScaffoldMessengerState>();
 
 class UserInfoScreen extends StatefulWidget {
+
+  final String? name;
+  final String? email;
+  final String? phoneNumber;
+
+  const UserInfoScreen({
+    Key? key,
+    this.name,
+    this.email,
+    this.phoneNumber,
+  }) : super(key: key);
+
   @override
   _UserInfoScreenState createState() => _UserInfoScreenState();
 }
@@ -37,6 +51,11 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // widget을 통해 전달받은 데이터를 접근
+    final name = widget.name ?? '이름 없음';
+    final email = widget.email ?? '이메일 없음';
+    final phoneNumber = widget.phoneNumber ?? '전화번호 없음';
+
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
@@ -84,7 +103,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                name ?? '이름 없음',
+                name,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -92,7 +111,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                email ?? '이메일 없음',
+                email,
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
@@ -100,7 +119,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                phoneNumber ?? ' 전화번호 없음',
+                phoneNumber,
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
@@ -161,8 +180,8 @@ Future<void> naverLogout(BuildContext context) async {
     await FlutterNaverLogin.logOut();
     print("Logout successful");
 
-    // 로그인 상태 false로 업데이트
-    isLogin = false;
+    // 로그아웃 처리
+    Provider.of<UserData>(context, listen: false).logout();
 
     // 로그인 페이지로 이동 (현재 페이지를 대체)
     Navigator.of(context).pushReplacement(
@@ -184,7 +203,6 @@ Future<void> unlinkNaverAccount(BuildContext context) async {
 
     // 성공 시 처리 로직
     print("네이버 계정 연동 해제 성공");
-    isLogin = false;
 
     // 회원 탈퇴 후 로그인을 요청하는 페이지로 이동
     Navigator.of(context).pushReplacement(
