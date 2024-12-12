@@ -102,18 +102,21 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         _contentList = issueProvider.issues
             .where((issue) => issue.status != '상황종료')
             .map((issue) {
-          return {
-            "id": issue.issueId,
-            "title": issue.title,
-            "category": issue.category,
-            "description": issue.description ?? "내용이 없습니다.",
-            "latitude": issue.latitude,
-            "longitude": issue.longitude,
-            "view": 0,
-            "verified": issue.verified,
-          };
-        }).toList();
+              return {
+                "id": issue.issueId,
+                "title": issue.title,
+                "category": issue.category,
+                "description": issue.description ?? "내용이 없습니다.",
+                "latitude": issue.latitude,
+                "longitude": issue.longitude,
+                "view": 0,
+                "verified": issue.verified,
+              };
+            }).toList();
       });
+
+      _addContentMarkers();
+      // dev.log("_contentList updated: $_contentList", name: "MapScreen");
     }).catchError((error) {
       dev.log("Error loading issues: $error", name: "MapScreen");
     });
@@ -222,7 +225,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       double markerSize = 20 + sqrt(view);
 
       final marker = NMarker(
-        id: "marker_" + content['id'],
+        id: '${content['id']}',
         position: location,
         icon: await NOverlayImage.fromWidget(
           context: context,
@@ -258,7 +261,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _filteredMarkers.add(marker);
       controller.addOverlay(marker);
     }
-    _applyClustering(defaultZoomLevel);
+
+    _applyClustering(_zoomLevel);
   }
 
   // 현재 위치에서 각 마커까지의 거리 정보 추가
@@ -505,8 +509,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (zoomLevel <= 10) return 4.0;
     if (zoomLevel <= 12) return 2.0;
     if (zoomLevel <= 13) return 0.6;
-    if (zoomLevel < 14) return 0.1;
-    return 0;
+    if (zoomLevel < 14) return 0.25;
+    return 0.05;
   }
 
   // 클러스터 생성
@@ -584,7 +588,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               itemCount: cluster.markers.length,
                               itemBuilder: (context, index) {
                                 final content = _contentList.firstWhere(
-                                      (c) => c['title'] == cluster.markers[index].info.id,
+                                      (c) => '${c['id']}' == cluster.markers[index].info.id,
                                 );
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 1.0),
@@ -1080,7 +1084,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      _selectedContent?['title'] ?? '제목 없음',
+                      _selectedContent?['title'] ?? '사고 제목',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
