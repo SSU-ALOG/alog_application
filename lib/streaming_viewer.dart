@@ -267,40 +267,40 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       ),
     );
   }
-}
 
-
-// 사용자가 방송 입장 시, Firestore에 시청자 정보를 추가
-Future<void> userJoined(String userId, String channelId) async {
-  try {
-    await FirebaseFirestore.instance.collection('Viewers').add({
+  // 사용자가 방송 입장 시, Firestore에 시청자 정보를 추가
+  Future<void> userJoined(String userId, String channelId) async {
+    try {
+      await FirebaseFirestore.instance.collection('Viewers').add({
       'userId': userId,
       'channelId': channelId,
+      //'issueId' : widget.id;
       'createdAt': FieldValue.serverTimestamp(),  // 서버 타임스탬프
-    });
-    print("User joined channel: $channelId");
-  } catch (e) {
-    print("Error adding user: $e");
+      });
+      print("User joined channel: $channelId");
+    } catch (e) {
+      print("Error adding user: $e");
+    }
   }
-}
 
 // 사용자가 방송 퇴장 시, 해당 시청자 정보를 Firestore에서 삭제u
-Future<void> userLeft(String userId, String channelId) async {
-  try {
-    // `Viewers` 컬렉션에서 해당 유저의 문서 삭제
-    var querySnapshot = await FirebaseFirestore.instance
-        .collection('Viewers')
-        .where('userId', isEqualTo: userId)
-        .where('channelId', isEqualTo: channelId)
-        .get();
+  Future<void> userLeft(String userId, String channelId) async {
+    try {
+      // `Viewers` 컬렉션에서 해당 유저의 문서 삭제
+      var querySnapshot = await FirebaseFirestore.instance
+          .collection('Viewers')
+          .where('userId', isEqualTo: userId)
+          .where('channelId', isEqualTo: channelId)
+          .get();
 
-    if (querySnapshot.docs.isNotEmpty) {
-      var documentId = querySnapshot.docs.first.id;
-      await FirebaseFirestore.instance.collection('Viewers').doc(documentId).delete();
-      print("User left channel: $channelId");
+      if (querySnapshot.docs.isNotEmpty) {
+        var documentId = querySnapshot.docs.first.id;
+        await FirebaseFirestore.instance.collection('Viewers').doc(documentId).delete();
+        print("User left channel: $channelId");
+      }
+    } catch (e) {
+      print("Error removing user: $e");
     }
-  } catch (e) {
-    print("Error removing user: $e");
   }
 }
 
@@ -318,6 +318,7 @@ Future<void> sendMessage(String userId, String channelId, String messageText) as
     print("Error sending message: $e");
   }
 }
+
 
 
 

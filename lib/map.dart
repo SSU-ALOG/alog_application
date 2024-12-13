@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -50,6 +51,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   TextEditingController _searchController = TextEditingController();
   Set<String> _selectedFilters = {'ALL'};
   String _searchKeyword = '';
+  int? issueId; // 썸네일 부분 사용
   double _zoomLevel = 14.0;
   double _mapRotation = 0.0;
   bool _locationPermissionGranted = false;
@@ -1041,16 +1043,23 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     );
   }
 
-  // Firestore에서 실시간으로 썸네일 URL 가져오기
-  Stream<DocumentSnapshot> getThumbnailStream(String issueId) {
+  // 실시간으로 썸네일 URL 가져오기
+  // Firestore에서 `issueId`와 `isLive`가 true인 첫 번째 문서의 thumbnailUrl을 실시간으로 가져오는 Stream
+  Stream<QuerySnapshot> getThumbnailUrlStream(int? issueId) {
     return FirebaseFirestore.instance
-        .collection('serviceURL')
-        .where('issueId', isEqualTo: issueId)  // issueId 필터링
-        .where('isLive', isEqualTo: true)  // isLive 필터링
-        .limit(1)  // 첫 번째 문서만 가져옴
-        .snapshots()
-        .map((snapshot) => snapshot.docs.isNotEmpty ? snapshot.docs.first : null);  // 첫 번째 문서
+        .collection('ServiceUrl')  // `serviceURL` 컬렉션
+        .where('issueId', isEqualTo: issueId)  // issueId가 int로 일치하는 문서
+        .where('isLive', isEqualTo: true)  // isLive가 true인 문서
+        .limit(1)  // 첫 번째 문서만 가져오기
+        .snapshots();  // 실시간 데이터 스트림
   }
+
+  // firestore 데이터 가져오기 테스트
+  // Stream<QuerySnapshot> getAllServiceURLs() {
+  //   return FirebaseFirestore.instance
+  //       .collection('ServiceUrl')  // ServiceURL 컬렉션
+  //       .snapshots();  // 실시간으로 문서들을 가져옵니다
+  // }
 
   // 상세 정보 뷰 빌더
   Widget _buildDetailView() {
@@ -1110,14 +1119,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             onTap: () {
               var id = _selectedContent?['id'];
               var title = _selectedContent?['title'];
+
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen(
+                  id: id,
+                  title: title,
+                )),
               );
             },
-
-            child: StreamBuilder<DocumentSnapshot>(
-              // 실시간 썸네일 URL 스트림
-              stream: getThumbnailStream(_selectedContent?['id']), // 추후 괄호 안에 id 로 수정 입력되는 부분 수정
+            child: StreamBuilder<QuerySnapshot>(
+              // 실시간 썸네일 URL 스트림 (_selectedContent?['id'] = issueId)
+              //stream: _selectedContent?['id'] != null ? getThumbnailUrlStream(_selectedContent?['id']!) : Stream.empty(),  // issueId가 null이 아니면 스트림 사용
+              stream: getThumbnailUrlStream(123),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Container(
@@ -1128,9 +1141,25 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                   );  // 데이터 로딩 중
                 }
 
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  print('No documents found matching the criteria.');  // 조건에 맞는 문서가 없을 때 로그 출력
+                  return Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Center(child: Icon(Icons.videocam, size: 50, color: Colors.grey)),
+                  );  // 데이터가 없으면 아이콘 표시
+                }
+
                 // 썸네일 URL 가져오기
-                var document = snapshot.data;
-                var thumbnailUrl = document != null ? document['thumbnailUrl'] : null;
+                var document = snapshot.data!.docs.first;
+                var thumbnailUrl = document['thumbnailUrl'];
+
+                if (thumbnailUrl == null) {
+                  print('Thumbnail URL is null for document: ${document.id}');  // 썸네일 URL이 null일 때 로그 출력
+                } else {
+                  print('Thumbnail URL: $thumbnailUrl');  // 썸네일 URL이 있을 때 로그 출력
+                }
 
                 return Container(
                   height: 200,
@@ -1140,18 +1169,11 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     borderRadius: BorderRadius.circular(12),
                     image: thumbnailUrl != null
                         ? DecorationImage(
-                      image: NetworkImage(thumbnailUrl),  // 이미지 표시
+                      image: NetworkImage(thumbnailUrl),  // 썸네일 이미지 표시
                       fit: BoxFit.cover,
                     )
                         : null,
                   ),
-                  child: thumbnailUrl == null
-                      ? const Icon(
-                    Icons.videocam,
-                    size: 50,
-                    color: Colors.grey,
-                  )
-                      : null,  // 썸네일이 없으면 아이콘 표시
                 );
               },
             ),

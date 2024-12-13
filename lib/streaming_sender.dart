@@ -505,7 +505,7 @@ Future<String?> getThumbnailUrl(String? channelId) async {
 }
 
 // Firestore 데이터 추가 -  방송 시작 시 입력
-Future<void> addBroadcast(String issueId, String liveUrl, String thumbnailUrl) async {
+Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
   try {
     await FirebaseFirestore.instance.collection('ServiceURL').add({
       'issueId': issueId,
@@ -534,7 +534,7 @@ List<CameraDescription> cameras = [];
 class LiveStreamStartScreen extends StatefulWidget {
 
   // 상세보기 창의 이슈번호와 제목을 받아옴
-  final String? id;
+  final int? id;
   final String? title;
 
   const LiveStreamStartScreen({
@@ -898,10 +898,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   // 방송 시작 시 documentId 받아오기
   String? documentId;  // documentId를 로컬 변수로 저장
 
-  Future<void> _startBroadcast(String issueId, String liveUrl, String thumbnailUrl) async {
+  Future<void> _startBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
     try {
       // Firestore에 방송 정보 저장
-      var docRef = await FirebaseFirestore.instance.collection('ServiceURL').add({
+      var docRef = await FirebaseFirestore.instance.collection('ServiceUrl').add({
         'issueId': issueId,         // Firestore에 issueId 저장
         'liveUrl': liveUrl,        // 방송 URL
         'thumbnailUrl': thumbnailUrl, // 썸네일 URL
@@ -978,12 +978,11 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                   setState(() {});
                   // 방송 정보를 Firestore에 저장
                   //await Future.delayed(Duration(seconds: 10));
-                  //debugPrint("************************************ Channel ID: $channelId ************************************ ");
-
+                  //debugPrint("************************************ Channel ID: $channelId ************************************
                   //await getVodChannelInfo(channelId);
                   String ServiceUrl = await getServiceUrl(channelId) ?? ''; // 송출 url 조회
                   String thumbnailUrl = await getThumbnailUrl(channelId) ?? ''; // 썸네일 URL 조회
-                  String? issueId = widget.id ?? '0'; // 디비 연결안되어 있어서 현재 0으로 가져와지는거 정상
+                  int? issueId = widget.id ?? 0; // 디비 연결안되어 있어서 현재 0으로 가져와지는거 정상
                   await _startBroadcast(issueId, ServiceUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
 
                   debugPrint("Streaming started with URL: $ServiceUrl");
@@ -1382,7 +1381,7 @@ Future<void> sendMessage(String userId, String channelId, String messageText) as
 }
 
 // firestore에서 썸네일 가져와서 반환
-Future<String?> getFirestoreThumbnail(String issueId) async {
+Future<String?> getFirestoreThumbnail(int issueId) async {
   try {
     // Firestore에서 `serviceURL` 컬렉션에 대한 쿼리
     QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -1393,7 +1392,7 @@ Future<String?> getFirestoreThumbnail(String issueId) async {
 
     // 쿼리 결과가 있는지 확인
     if (snapshot.docs.isNotEmpty) {
-      // 첫 번째 문서를 가져오고 `thumbnailUrl` 반환
+      // 첫 번째 문서를 Firebase 초기화i가져오고 `thumbnailUrl` 반환
       var document = snapshot.docs.first;
       return document['thumbnailUrl'];  // `thumbnailUrl` 값을 반환
     } else {
