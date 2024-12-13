@@ -82,11 +82,12 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 flutter_launcher_icons:
-#  android: true
-  android: "launcher_icon"
+  android: "adaptive_icon"
   ios: true
   image_path: "assets/images/logo_simple.png"
 #  remove_alpha_ios: true
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/images/logo_simple.png"
   min_sdk_android: 21
 
 # For information on the generic Dart part of this file, see the

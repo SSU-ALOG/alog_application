@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
+import 'main.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,6 +25,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   final DraggableScrollableController _draggableController = DraggableScrollableController();
+  final ScrollController _listScrollController = ScrollController();
   final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504);
   final FocusNode _searchFocusNode = FocusNode();
   final double defaultZoomLevel = 14;
@@ -90,38 +92,100 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     super.didChangeDependencies();
 
     if (!_isDataLoaded) {
-      _loadData();
+      _initializeData();
       _isDataLoaded = true;
     }
   }
 
-  // IssueProvider에서 데이터 로드
-  void _loadData() {
+  @override
+  void dispose() {
+    _draggableController.dispose();
+    super.dispose();
+  }
+
+  void _initializeData() {
     final issueProvider = Provider.of<IssueProvider>(context, listen: false);
 
-    issueProvider.fetchRecentIssues().then((_) {
-      setState(() {
-        _contentList = issueProvider.issues
-            .where((issue) => issue.status != '상황종료')
-            .map((issue) {
-              return {
-                "id": issue.issueId,
-                "title": issue.title,
-                "category": issue.category,
-                "description": issue.description ?? "내용이 없습니다.",
-                "latitude": issue.latitude,
-                "longitude": issue.longitude,
-                "view": 0,
-                "verified": issue.verified,
-              };
-            }).toList();
-      });
-
-      _addContentMarkers();
-      // dev.log("_contentList updated: $_contentList", name: "MapScreen");
-    }).catchError((error) {
-      dev.log("Error loading issues: $error", name: "MapScreen");
+    issueProvider.addListener(() {
+      _updateContentList(issueProvider);
     });
+  }
+
+  void _updateContentList(IssueProvider issueProvider) {
+    setState(() async {
+      _contentList = issueProvider.issues
+          .where((issue) => issue.status != '상황종료')
+          .map((issue) {
+        return {
+          "id": issue.issueId,
+          "title": issue.title,
+          "category": issue.category,
+          "description": issue.description ?? "내용이 없습니다.",
+          "latitude": issue.latitude,
+          "longitude": issue.longitude,
+          "view": 0,
+          "verified": issue.verified,
+        };
+      }).toList();
+      dev.log("Content List: $_contentList", name: "MapScreen");
+
+      await _addContentMarkers();
+      if (_searchKeyword == '') {
+        await _updateMarkers();
+      } else {
+        _performSearch();
+      }
+      if (_currentLocation != null) {
+        await _calculateDistances();
+      }
+      if (clickedIssueId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _highlightIssue(clickedIssueId!);
+        });
+      }
+    });
+  }
+
+  // 알림에 의한 특정 이슈 강조
+  Future<void> _highlightIssue(String issueId) async {
+    final issue = _contentList.firstWhere((content) => '${content['id']}' == issueId, orElse: () => {});
+
+    if (issue.isEmpty) {
+      dev.log('해당 issueId를 찾을 수 없습니다: $issueId', name: '_highlightIssue');
+      return;
+    }
+    dev.log('알림에 의한 issueId: $issueId', name: '_highlightIssue');
+
+    setState(() {
+      _selectedContent = issue;
+      _isDetailView = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 50), () {
+      _draggableController.animateTo(
+        maxHeightRatio,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ).then((_) {
+        dev.log("DraggableScrollableSheet expanded for issueId: $issueId", name: "_highlightIssue");
+      }).catchError((error) {
+        dev.log("Failed to expand DraggableScrollableSheet for issueId: $issueId: $error", name: "_highlightIssue");
+      });
+    });
+
+    // 지도 중심을 해당 이슈 위치로 이동
+    final NLatLng location = NLatLng(issue['latitude'], issue['longitude']);
+    final NaverMapController controller = await mapControllerCompleter.future;
+    controller.updateCamera(
+      NCameraUpdate.fromCameraPosition(
+        NCameraPosition(
+          target: location,
+          zoom: defaultZoomLevel,
+        ),
+      ),
+    );
+
+    clickedIssueId = null;
   }
 
   // 위치 권한 요청
@@ -189,13 +253,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ),
       );
       _addCurrentLocationMarker();
-      _addContentMarkers();
       _calculateDistances();
     }
   }
 
   // 현재 위치에 마커 추가
-  void _addCurrentLocationMarker() async {
+  Future<void> _addCurrentLocationMarker() async {
     if (_currentLocation == null) return;
 
     final NaverMapController controller = await mapControllerCompleter.future;
@@ -216,11 +279,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 콘텐츠 마커 추가
-  void _addContentMarkers() async {
+  Future<void> _addContentMarkers() async {
     final NaverMapController controller = await mapControllerCompleter.future;
-    _markers.clear();
+
+    dev.log("__addContentMarkers", name: "_addContentMarkers");
 
     for (var content in _contentList) {
+      if (_markers.any((marker) => marker.info.id == '${content['id']}')) {
+        continue;
+      }
+      // dev.log("create marker: ${content['id']}", name: "_addContentMarkers");
+
       final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       final int view = content['view'] ?? 10;
 
@@ -263,12 +332,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       _filteredMarkers.add(marker);
       controller.addOverlay(marker);
     }
-
-    _applyClustering(_zoomLevel);
   }
 
   // 현재 위치에서 각 마커까지의 거리 정보 추가
-  void _calculateDistances() {
+  Future<void> _calculateDistances() async {
     for (var content in _contentList) {
       final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       double distance = _calculateDistance(_currentLocation!, location);
@@ -332,16 +399,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 필터에 따른 마커 업데이트
-  void _updateMarkers() async {
+  Future<void> _updateMarkers() async {
     final controller = await mapControllerCompleter.future;
     final position = await controller.getCameraPosition();
     final currentZoomLevel = position.zoom;
+
+    dev.log("_updateMarkers", name: "_updateMarkers");
 
     _currentContentList.clear();
     _filteredMarkers.clear();
 
     for (var marker in _searchedMarkers) {
-      final matchingContent = _contentList.firstWhere((content) => content['title'] == marker.info.id);
+      final matchingContent = _contentList.firstWhere((content) => '${content['id']}' == marker.info.id);
       final isVisible = _selectedFilters.contains('ALL') || _selectedFilters.contains(matchingContent['category']);
       marker.setIsVisible(isVisible);
 
@@ -359,9 +428,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 검색
   void _performSearch() {
     setState(() {
+      _searchKeyword = _searchController.text.toLowerCase().trim();
+
+      if (_searchKeyword == '') {
+        return;
+      }
+
+      dev.log("_performSearch: $_searchKeyword", name: "_performSearch");
+
       _isSearching = true;
       _searchFocusNode.unfocus();
-      _searchKeyword = _searchController.text.toLowerCase().trim();
 
       _currentContentList = _contentList.where((content) {
         final title = content['title']?.toLowerCase() ?? '';
@@ -392,7 +468,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 검색에 따른 마커 업데이트
-  void _updateMarkersForSearch() async {
+  Future<void> _updateMarkersForSearch() async {
     for (var marker in _markers) {
       marker.setIsVisible(false);
     }
@@ -400,7 +476,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _searchedMarkers.clear();
     for (var content in _currentContentList) {
       final matchingMarkers = _markers.where(
-              (marker) => marker.info.id == content['title']
+              (marker) => marker.info.id == '${content['id']}'
       ).toList();
 
       _searchedMarkers.addAll(matchingMarkers);
@@ -409,7 +485,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 지도 방향 정렬
-  void _resetMapRotation() async {
+  Future<void> _resetMapRotation() async {
     final NaverMapController controller = await mapControllerCompleter.future;
     NCameraPosition cameraPosition = await controller.getCameraPosition();
     NLatLng center = cameraPosition.target;
@@ -430,7 +506,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 클러스터링
-  void _applyClustering(double zoomLevel) async {
+  Future<void> _applyClustering(double zoomLevel) async {
     final NaverMapController controller = await mapControllerCompleter.future;
     double clusterDistance = _getClusterDistance(zoomLevel);
     List<Cluster> clusters = _createClusters(clusterDistance);
@@ -500,6 +576,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return true;
         });
 
+        // dev.log("create cluster marker: cluster_${clusterCenter.latitude}_${clusterCenter.longitude}", name: "_applyClustering");
         _clusterMarkers.add(clusterMarker);
         controller.addOverlay(clusterMarker);
       }
@@ -879,7 +956,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           ),
                         ),
                         Expanded(
-                          child: _isDetailView ? _buildDetailView() : _buildContentList(scrollController),
+                          child: _isDetailView ? _buildDetailView() : _buildContentList(_listScrollController),
                         ),
                       ],
                     ),
