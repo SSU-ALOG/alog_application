@@ -2,13 +2,18 @@ import 'dart:async';
 import 'dart:developer' as dev;
 import 'dart:math';
 
+import 'package:alog/providers/issue_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_naver_map/flutter_naver_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 
+import 'main.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -20,6 +25,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMixin {
   final Completer<NaverMapController> mapControllerCompleter = Completer();
   final DraggableScrollableController _draggableController = DraggableScrollableController();
+  final ScrollController _listScrollController = ScrollController();
   final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504);
   final FocusNode _searchFocusNode = FocusNode();
   final double defaultZoomLevel = 14;
@@ -47,35 +53,139 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   TextEditingController _searchController = TextEditingController();
   Set<String> _selectedFilters = {'ALL'};
   String _searchKeyword = '';
+  int? issueId; // 썸네일 부분 사용
   double _zoomLevel = 14.0;
   double _mapRotation = 0.0;
   bool _locationPermissionGranted = false;
   bool _isExpanded = false;
   bool _isDetailView = false;
   bool _isSearching = false;
+  bool _isDataLoaded = false;
   NLatLng? _currentLocation;
   Map<String, dynamic>? _selectedContent;
   List<NMarker> _searchedMarkers = [];
   List<NMarker> _filteredMarkers = [];
   List<NMarker> _clusterMarkers = [];
   List<Map<String, dynamic>> _currentContentList = [];
-  List<Map<String, dynamic>> _contentList = [
-    {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-    {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
-    {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-    {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
-    {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
-    {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
-    {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
-    {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
-    {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
-    {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
-  ];
+  List<Map<String, dynamic>> _contentList = [];
+  // List<Map<String, dynamic>> _contentList = [
+  //   {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
+  //   {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
+  //   {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
+  //   {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
+  //   {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
+  //   {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
+  //   {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
+  //   {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
+  //   {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
+  //   {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
+  // ];
 
   @override
   void initState() {
     super.initState();
     _requestLocationPermission();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_isDataLoaded) {
+      _initializeData();
+      _isDataLoaded = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _draggableController.dispose();
+    super.dispose();
+  }
+
+  void _initializeData() {
+    final issueProvider = Provider.of<IssueProvider>(context, listen: false);
+
+    issueProvider.addListener(() {
+      _updateContentList(issueProvider);
+    });
+  }
+
+  void _updateContentList(IssueProvider issueProvider) {
+    setState(() async {
+      _contentList = issueProvider.issues
+          .where((issue) => issue.status != '상황종료')
+          .map((issue) {
+        return {
+          "id": issue.issueId,
+          "title": issue.title,
+          "category": issue.category,
+          "description": issue.description ?? "내용이 없습니다.",
+          "latitude": issue.latitude,
+          "longitude": issue.longitude,
+          "view": 0,
+          "verified": issue.verified,
+        };
+      }).toList();
+      dev.log("Content List: $_contentList", name: "MapScreen");
+
+      await _addContentMarkers();
+      if (_searchKeyword == '') {
+        await _updateMarkers();
+      } else {
+        _performSearch();
+      }
+      if (_currentLocation != null) {
+        await _calculateDistances();
+      }
+      if (clickedIssueId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _highlightIssue(clickedIssueId!);
+        });
+      }
+    });
+  }
+
+  // 알림에 의한 특정 이슈 강조
+  Future<void> _highlightIssue(String issueId) async {
+    final issue = _contentList.firstWhere((content) => '${content['id']}' == issueId, orElse: () => {});
+
+    if (issue.isEmpty) {
+      dev.log('해당 issueId를 찾을 수 없습니다: $issueId', name: '_highlightIssue');
+      return;
+    }
+    dev.log('알림에 의한 issueId: $issueId', name: '_highlightIssue');
+
+    setState(() {
+      _selectedContent = issue;
+      _isDetailView = true;
+    });
+
+    Future.delayed(const Duration(milliseconds: 50), () {
+      _draggableController.animateTo(
+        maxHeightRatio,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      ).then((_) {
+        dev.log("DraggableScrollableSheet expanded for issueId: $issueId", name: "_highlightIssue");
+      }).catchError((error) {
+        dev.log("Failed to expand DraggableScrollableSheet for issueId: $issueId: $error", name: "_highlightIssue");
+      });
+    });
+
+    // 지도 중심을 해당 이슈 위치로 이동
+    final NLatLng location = NLatLng(issue['latitude'], issue['longitude']);
+    final NaverMapController controller = await mapControllerCompleter.future;
+    controller.updateCamera(
+      NCameraUpdate.fromCameraPosition(
+        NCameraPosition(
+          target: location,
+          zoom: defaultZoomLevel,
+        ),
+      ),
+    );
+
+    clickedIssueId = null;
   }
 
   // 위치 권한 요청
@@ -119,8 +229,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-        _currentLocation = NLatLng(position.latitude, position.longitude);
-        // _currentLocation = defaultLocation;
+         _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
+        //_currentLocation = defaultLocation; // defalut로 학교 위치
       });
     } catch (e) {
       setState(() {
@@ -143,13 +253,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
         ),
       );
       _addCurrentLocationMarker();
-      _addContentMarkers();
       _calculateDistances();
     }
   }
 
   // 현재 위치에 마커 추가
-  void _addCurrentLocationMarker() async {
+  Future<void> _addCurrentLocationMarker() async {
     if (_currentLocation == null) return;
 
     final NaverMapController controller = await mapControllerCompleter.future;
@@ -170,18 +279,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 콘텐츠 마커 추가
-  void _addContentMarkers() async {
+  Future<void> _addContentMarkers() async {
     final NaverMapController controller = await mapControllerCompleter.future;
-    _markers.clear();
+
+    dev.log("__addContentMarkers", name: "_addContentMarkers");
 
     for (var content in _contentList) {
+      if (_markers.any((marker) => marker.info.id == '${content['id']}')) {
+        continue;
+      }
+      // dev.log("create marker: ${content['id']}", name: "_addContentMarkers");
+
       final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       final int view = content['view'] ?? 10;
 
       double markerSize = 20 + sqrt(view);
 
       final marker = NMarker(
-        id: content['title'], // id 값으로 변경해야 할듯
+        id: '${content['id']}',
         position: location,
         icon: await NOverlayImage.fromWidget(
           context: context,
@@ -220,7 +335,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 현재 위치에서 각 마커까지의 거리 정보 추가
-  void _calculateDistances() {
+  Future<void> _calculateDistances() async {
     for (var content in _contentList) {
       final NLatLng location = NLatLng(content['latitude'], content['longitude']);
       double distance = _calculateDistance(_currentLocation!, location);
@@ -284,16 +399,18 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 필터에 따른 마커 업데이트
-  void _updateMarkers() async {
+  Future<void> _updateMarkers() async {
     final controller = await mapControllerCompleter.future;
     final position = await controller.getCameraPosition();
     final currentZoomLevel = position.zoom;
+
+    dev.log("_updateMarkers", name: "_updateMarkers");
 
     _currentContentList.clear();
     _filteredMarkers.clear();
 
     for (var marker in _searchedMarkers) {
-      final matchingContent = _contentList.firstWhere((content) => content['title'] == marker.info.id);
+      final matchingContent = _contentList.firstWhere((content) => '${content['id']}' == marker.info.id);
       final isVisible = _selectedFilters.contains('ALL') || _selectedFilters.contains(matchingContent['category']);
       marker.setIsVisible(isVisible);
 
@@ -303,9 +420,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       }
     }
 
-    if (currentZoomLevel < 14) {
-      _applyClustering(currentZoomLevel);
-    }
+    _applyClustering(currentZoomLevel);
 
     setState(() {});
   }
@@ -313,9 +428,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 검색
   void _performSearch() {
     setState(() {
+      _searchKeyword = _searchController.text.toLowerCase().trim();
+
+      if (_searchKeyword == '') {
+        return;
+      }
+
+      dev.log("_performSearch: $_searchKeyword", name: "_performSearch");
+
       _isSearching = true;
       _searchFocusNode.unfocus();
-      _searchKeyword = _searchController.text.toLowerCase().trim();
 
       _currentContentList = _contentList.where((content) {
         final title = content['title']?.toLowerCase() ?? '';
@@ -346,7 +468,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 검색에 따른 마커 업데이트
-  void _updateMarkersForSearch() async {
+  Future<void> _updateMarkersForSearch() async {
     for (var marker in _markers) {
       marker.setIsVisible(false);
     }
@@ -354,7 +476,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _searchedMarkers.clear();
     for (var content in _currentContentList) {
       final matchingMarkers = _markers.where(
-              (marker) => marker.info.id == content['title']
+              (marker) => marker.info.id == '${content['id']}'
       ).toList();
 
       _searchedMarkers.addAll(matchingMarkers);
@@ -363,7 +485,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 지도 방향 정렬
-  void _resetMapRotation() async {
+  Future<void> _resetMapRotation() async {
     final NaverMapController controller = await mapControllerCompleter.future;
     NCameraPosition cameraPosition = await controller.getCameraPosition();
     NLatLng center = cameraPosition.target;
@@ -384,7 +506,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 클러스터링
-  void _applyClustering(double zoomLevel) async {
+  Future<void> _applyClustering(double zoomLevel) async {
     final NaverMapController controller = await mapControllerCompleter.future;
     double clusterDistance = _getClusterDistance(zoomLevel);
     List<Cluster> clusters = _createClusters(clusterDistance);
@@ -398,12 +520,12 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _clusterMarkers.clear();
 
     // 줌 레벨 14 이상 시 클러스터링 해제
-    if (zoomLevel >= 14) {
-      for (var marker in _filteredMarkers) {
-        marker.setIsVisible(true);
-      }
-      return;
-    }
+    // if (zoomLevel >= 14) {
+    //   for (var marker in _filteredMarkers) {
+    //     marker.setIsVisible(true);
+    //   }
+    //   return;
+    // }
 
     // 기본 마커 비활성화
     for (var marker in _filteredMarkers) {
@@ -454,6 +576,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           return true;
         });
 
+        // dev.log("create cluster marker: cluster_${clusterCenter.latitude}_${clusterCenter.longitude}", name: "_applyClustering");
         _clusterMarkers.add(clusterMarker);
         controller.addOverlay(clusterMarker);
       }
@@ -466,7 +589,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     if (zoomLevel <= 12) return 2.0;
     if (zoomLevel <= 13) return 0.6;
     if (zoomLevel < 14) return 0.25;
-    return 0;
+    return 0.05;
   }
 
   // 클러스터 생성
@@ -544,7 +667,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                               itemCount: cluster.markers.length,
                               itemBuilder: (context, index) {
                                 final content = _contentList.firstWhere(
-                                      (c) => c['title'] == cluster.markers[index].info.id,
+                                      (c) => '${c['id']}' == cluster.markers[index].info.id,
                                 );
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(vertical: 1.0),
@@ -788,7 +911,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Container(
-                    height: screenHeight - extraHeight - 163,
+                    height: screenHeight - extraHeight, // 106 (수정)
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                       color: Colors.white,
@@ -833,7 +956,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                           ),
                         ),
                         Expanded(
-                          child: _isDetailView ? _buildDetailView() : _buildContentList(scrollController),
+                          child: _isDetailView ? _buildDetailView() : _buildContentList(_listScrollController),
                         ),
                       ],
                     ),
@@ -997,6 +1120,24 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     );
   }
 
+  // 실시간으로 썸네일 URL 가져오기
+  // Firestore에서 `issueId`와 `isLive`가 true인 첫 번째 문서의 thumbnailUrl을 실시간으로 가져오는 Stream
+  Stream<QuerySnapshot> getThumbnailUrlStream(int? issueId) {
+    return FirebaseFirestore.instance
+        .collection('ServiceUrl')  // `serviceURL` 컬렉션
+        .where('issueId', isEqualTo: issueId)  // issueId가 int로 일치하는 문서
+        .where('isLive', isEqualTo: true)  // isLive가 true인 문서
+        .limit(1)  // 첫 번째 문서만 가져오기
+        .snapshots();  // 실시간 데이터 스트림
+  }
+
+  // firestore 데이터 가져오기 테스트
+  // Stream<QuerySnapshot> getAllServiceURLs() {
+  //   return FirebaseFirestore.instance
+  //       .collection('ServiceUrl')  // ServiceURL 컬렉션
+  //       .snapshots();  // 실시간으로 문서들을 가져옵니다
+  // }
+
   // 상세 정보 뷰 빌더
   Widget _buildDetailView() {
     String? imageUrl = _selectedContent?['imageUrl'];
@@ -1053,30 +1194,65 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           // 사진 또는 영상
           GestureDetector(
             onTap: () {
+              var id = _selectedContent?['id'];
+              var title = _selectedContent?['title'];
+
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen()),
+                MaterialPageRoute(builder: (context) => LiveStreamWatchScreen(
+                  id: id,
+                  title: title,
+                )),
               );
             },
-            child: Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
-                image: imageUrl != null
-                    ? DecorationImage(
-                  image: NetworkImage(imageUrl), // 이미지 URL이 있는 경우 이미지 표시
-                  fit: BoxFit.cover,
-                )
-                    : null,
-              ),
-              child: imageUrl == null
-                  ? const Icon(
-                Icons.videocam,
-                size: 50,
-                color: Colors.grey,
-              )
-                  : null, // 이미지가 없는 경우
+            child: StreamBuilder<QuerySnapshot>(
+              // 실시간 썸네일 URL 스트림 (_selectedContent?['id'] = issueId)
+              //stream: _selectedContent?['id'] != null ? getThumbnailUrlStream(_selectedContent?['id']!) : Stream.empty(),  // issueId가 null이 아니면 스트림 사용
+              stream: getThumbnailUrlStream(_selectedContent?['id']),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator()),
+                  );  // 데이터 로딩 중
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  print('No documents found matching the criteria.');  // 조건에 맞는 문서가 없을 때 로그 출력
+                  return Container(
+                    height: 200,
+                    width: double.infinity,
+                    color: Colors.grey[200],
+                    child: const Center(child: Icon(Icons.videocam, size: 50, color: Colors.grey)),
+                  );  // 데이터가 없으면 아이콘 표시
+                }
+
+                // 썸네일 URL 가져오기
+                var document = snapshot.data!.docs.first;
+                var thumbnailUrl = document['thumbnailUrl'];
+
+                if (thumbnailUrl == null) {
+                  print('Thumbnail URL is null for document: ${document.id}');  // 썸네일 URL이 null일 때 로그 출력
+                } else {
+                  print('Thumbnail URL: $thumbnailUrl');  // 썸네일 URL이 있을 때 로그 출력
+                }
+
+                return Container(
+                  height: 200,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                    image: thumbnailUrl != null
+                        ? DecorationImage(
+                      image: NetworkImage(thumbnailUrl),  // 썸네일 이미지 표시
+                      fit: BoxFit.cover,
+                    )
+                        : null,
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
@@ -1124,8 +1300,13 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
               const Spacer(),
               ElevatedButton.icon(
                 onPressed: isWithin1km ? () {
+                  var id = _selectedContent?['id'];
+                  var title = _selectedContent?['title'];
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => LiveStreamStartScreen()),
+                    MaterialPageRoute(builder: (context) => LiveStreamStartScreen(
+                      id: id,
+                      title: title,
+                    )),
                   );
                 } : null, // 1km 이내일 때만 활성화, 그렇지 않으면 비활성화
                 icon: const Icon(Icons.live_tv, color: Colors.white),

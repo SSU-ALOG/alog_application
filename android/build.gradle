@@ -1,3 +1,14 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.0.2' // 최신 Gradle 버전
+        classpath 'com.google.gms:google-services:4.3.15' // Firebase Google Services
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -24,4 +35,15 @@ subprojects {
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
+}
+
+buildscript {
+    repositories {
+        google()  // Google Maven repository 추가
+        mavenCentral()
+    }
+    dependencies {
+        // Google services Gradle plugin 추가
+        classpath 'com.google.gms:google-services:4.4.2'  // 해당 플러그인의 버전 추가
+    }
 }

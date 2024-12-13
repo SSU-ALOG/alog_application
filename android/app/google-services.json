@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1052139545198",
+    "project_id": "alog-81aea",
+    "storage_bucket": "alog-81aea.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052139545198:android:7a42b2de161e6da6487c7f",
+        "android_client_info": {
+          "package_name": "com.example.alog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9cB0sfqJEpE4Ge6whn-lt3SxFMA1-LKQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
