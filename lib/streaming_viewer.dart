@@ -4,7 +4,7 @@ import 'package:chewie/chewie.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 
-import 'user_data.dart'; // UserData 클래스가 정의된 파일
+import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 class LiveStreamWatchScreen extends StatefulWidget {
   // 상세보기 창의 이슈번호와 제목을 받아옴
@@ -274,7 +274,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       await FirebaseFirestore.instance.collection('Viewers').add({
       'userId': userId,
       'channelId': channelId,
-      //'issueId' : widget.id;
+      'issueId' : widget.id,
       'createdAt': FieldValue.serverTimestamp(),  // 서버 타임스탬프
       });
       print("User joined channel: $channelId");
@@ -319,6 +319,29 @@ Future<void> sendMessage(String userId, String channelId, String messageText) as
   }
 }
 
+Future<int> fetchViewerCount(String issueId) async {
+  try {
+    // Firestore instance 가져오기
+    FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+    // Viewers 컬렉션에서 issueId가 일치하는 문서 가져오기
+    QuerySnapshot querySnapshot = await firestore
+        .collection('Viewers')
+        .where('issueId', isEqualTo: issueId)
+        .get();
+
+    // 문서 개수 반환
+    return querySnapshot.docs.length;
+  } catch (e) {
+    // 에러 처리
+    print('Error fetching viewer count: $e');
+    return 0; // 에러 발생 시 0 반환
+  }
+
+  // 사용 예시
+  // int viewerCount = await fetchViewerCount(issueId);
+  // print('Viewer count for issueId $issueId: $viewerCount');
+}
 
 
 

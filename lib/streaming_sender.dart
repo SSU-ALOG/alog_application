@@ -12,7 +12,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'user_data.dart'; // UserData 클래스가 정의된 파일
+import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 // signiture 생성 함수
 String generateSignature(String secretKey, String method, String uri, String timestamp, String accessKey) {

@@ -1207,7 +1207,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
             child: StreamBuilder<QuerySnapshot>(
               // 실시간 썸네일 URL 스트림 (_selectedContent?['id'] = issueId)
               //stream: _selectedContent?['id'] != null ? getThumbnailUrlStream(_selectedContent?['id']!) : Stream.empty(),  // issueId가 null이 아니면 스트림 사용
-              stream: getThumbnailUrlStream(123),
+              stream: getThumbnailUrlStream(_selectedContent?['id']),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Container(

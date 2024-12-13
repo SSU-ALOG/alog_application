@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'user_login.dart';
 import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
-import 'user_data.dart'; // UserData 클래스가 정의된 파일
+import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 final GlobalKey<ScaffoldMessengerState> snackbarKey =
     GlobalKey<ScaffoldMessengerState>();

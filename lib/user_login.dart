@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_naver_login/flutter_naver_login.dart';
 import 'user_info.dart';
 import 'main.dart';  // isLogin 변수를 사용하기 위해 main.dart를 import
-import 'user_data.dart'; // UserData 클래스가 정의된 파일
+import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 class UserLoginScreen extends StatefulWidget {
   @override

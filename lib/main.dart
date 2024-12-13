@@ -23,9 +23,11 @@ import 'message.dart';
 import 'safetyinfo.dart';
 import 'user_login.dart';
 import 'user_info.dart';
-import 'user_data.dart'; // UserData 클래스가 정의된 파일
+import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+String? clickedIssueId;
 
 void main() async {
   await initialize();
