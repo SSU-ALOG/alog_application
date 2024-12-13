@@ -1,30 +1,43 @@
 import 'package:flutter/material.dart';
 import 'models/issue.dart';
+import 'package:video_player/video_player.dart';
+import 'package:intl/intl.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Issue issue;
 
   const DetailScreen({Key? key, required this.issue}) : super(key: key);
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   // 테스트 환경에서는 동영상을 사용하지 않고 빈 화면
-  //   _videoController = VideoPlayerController.network(
-  //     'https://example.com/sample_video.mp4', // 오브젝트 스토리지 URL로 교체
-  //   )
-  //     ..initialize().then((_) {
-  //       setState(() {});
-  //       _videoController.setLooping(true);
-  //       _videoController.play();
-  //     });
-  // }
-  //
-  // @override
-  // void dispose() {
-  //   _videoController.dispose();
-  //   super.dispose();
-  // }
+  @override
+  _DetailScreenState createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  late VideoPlayerController _videoController;
+
+  @override
+  void initState() {
+    super.initState();
+    // 테스트 환경에서는 동영상을 사용하지 않고 빈 화면
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/snow.mp4', // 오브젝트 스토리지 URL로 교체
+    )..initialize().then((_) {
+        setState(() {});
+        _videoController.setLooping(true); // 반복 재생
+        _videoController.play(); // 재생
+      });
+  }
+
+  @override
+  void dispose() {
+    _videoController.dispose();
+    super.dispose();
+  }
+
+  String _formatDate(String isoString) {
+    final dateTime = DateTime.parse(isoString);
+    return DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,16 +46,15 @@ class DetailScreen extends StatelessWidget {
         children: [
           // Background video
           Positioned.fill(
-            child: Container(
-              color: Colors.black, // 테스트 환경에서 검은 배경
-            ),
-
-            // child: _videoController.value.isInitialized
-            //     ? VideoPlayer(_videoController)
-            //     :
-            // Container(
+            // child: Container(
             //   color: Colors.black, // 테스트 환경에서 검은 배경
             // ),
+
+            child: _videoController.value.isInitialized
+                ? VideoPlayer(_videoController)
+                : Container(
+                    color: Colors.black, // 초기 로딩 중일 때 검은 배경
+                  ),
           ),
 
           // Left-top: Back button
@@ -55,17 +67,17 @@ class DetailScreen extends StatelessWidget {
             ),
           ),
 
-          // Right-top: verified
-          if (issue.verified)
-            Positioned(
-              top: 16.0,
-              right: 16.0,
-              child: Image.asset(
-                'assets/images/verification_mark.png',
-                width: 80,
-                height: 40,
-              ),
-            ),
+          // // Right-top: verified
+          // if (widget.issue.verified)
+          //   Positioned(
+          //     top: 16.0,
+          //     right: 16.0,
+          //     child: Image.asset(
+          //       'assets/images/verification_mark.png',
+          //       width: 80,
+          //       height: 40,
+          //     ),
+          //   ),
 
           // title, description, and category
           Positioned.fill(
@@ -80,30 +92,45 @@ class DetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+
+                      Row(
+                        children: [
                       // status
                       Container(
                         padding: EdgeInsets.symmetric(
                             horizontal: 12.0, vertical: 4.0),
                         decoration: BoxDecoration(
-                          color: issue.status == "진행중"
+                          color: widget.issue.status == "진행중"
                               ? Color(0xFFFFB37C)
-                              : issue.status == "긴급"
+                              : widget.issue.status == "긴급"
                                   ? Color(0xFFFF6969)
                                   : Color(0xFF3AC0A0),
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                         child: Text(
-                          issue.status,
+                          widget.issue.status,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
+                      SizedBox(width: 12.0),
+                      if (widget.issue.verified)
+                        Positioned(
+                          top: 16.0,
+                          right: 16.0,
+                          child: Image.asset(
+                            'assets/images/verification_mark.png',
+                            width: 80,
+                            height: 40,
+                          ),
+                        ),
+                    ] ),
                       SizedBox(height: 8.0),
 
                       Text(
-                        issue.title,
+                        widget.issue.title,
                         style: TextStyle(
                           fontSize: 25,
                           fontWeight: FontWeight.bold,
@@ -112,27 +139,39 @@ class DetailScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 8.0),
 
-                      Text(
-                        issue.category,
-                        style: TextStyle(
-                          color: Colors.grey.shade300,
-                          fontSize: 16,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            widget.issue.category,
+                            style: TextStyle(
+                              color: Colors.grey.shade300,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(width: 8.0),
+                          Text(
+                            _formatDate(widget.issue.date.toIso8601String()),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 8.0),
 
                       // addr
                       Text(
-                        issue.addr,
+                        widget.issue.addr,
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey.shade300,
                         ),
                       ),
-                      SizedBox(height: 8.0),
+                      SizedBox(height: 16.0),
 
                       Text(
-                        issue.description ?? "none",
+                        widget.issue.description ?? "none",
                         style: TextStyle(
                           color: Colors.grey.shade300,
                           fontSize: 16,
