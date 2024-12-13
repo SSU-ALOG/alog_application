@@ -482,7 +482,7 @@ Future<String?> getThumbnailUrl(String? channelId) async {
 // Firestore 데이터 추가 -  방송 시작 시 입력
 Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
   try {
-    await FirebaseFirestore.instance.collection('ServiceURL').add({
+    await FirebaseFirestore.instance.collection('ServiceUrl').add({
       'issueId': issueId,
       'liveUrl': liveUrl,
       'thumbnailUrl': thumbnailUrl,
@@ -497,7 +497,7 @@ Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) asyn
 
 // Firestore - 방송 종료 시 방송여부 FALSE로 변경
 Future<void> endBroadcast(String documentId) async {
-  await FirebaseFirestore.instance.collection('ServiceURL').doc(documentId).update({
+  await FirebaseFirestore.instance.collection('ServiceUrl').doc(documentId).update({
     'isLive': false,
   });
 }
@@ -900,7 +900,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       if (documentId != null) {
         // documentId를 사용하여 Firestore에서 isLive를 false로 업데이트
         await FirebaseFirestore.instance
-            .collection('ServiceURL')
+            .collection('ServiceUrl')
             .doc(documentId)  // 로컬에 저장된 documentId로 문서 찾기
             .update({
           'isLive': false,  // 방송 종료 시 isLive를 false로 설정
