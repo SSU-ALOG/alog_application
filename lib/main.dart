@@ -20,12 +20,13 @@ import 'safetyinfo.dart';
 import 'user_login.dart';
 import 'user_info.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 bool isLogin = false;  // 전역 변수로 로그인 상태를 관리
 String? name;
 String? email;
 String? phoneNumber;
-
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+String? clickedIssueId;
 
 void main() async {
   await initialize();
@@ -153,18 +154,16 @@ class _AppScreenState extends State<AppScreen> {
       log('클릭 후 앱 열림, 메시지: ${message.messageId}', name: "_AppScreenState");
 
       final issueId = message.data['issueId'];
+      clickedIssueId = issueId;
+      log('clickedIssueId: $issueId', name: "_AppScreenState");
 
-      if (issueId != null) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AppScreen(),
-          ),
-          (route) => false, // 이전 모든 화면 제거
-        );
-      } else {
-        log('데이터가 없는 메시지: ${message.data}', name: "_AppScreenState");
-      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AppScreen(),
+        ),
+            (route) => false, // 이전 모든 화면 제거
+      );
     });
   }
 

@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:geolocator/geolocator.dart';
@@ -24,26 +27,31 @@ class NotificationService {
 
     _notificationsPlugin.initialize(
       settings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        log('알림 클릭 response: ${response.payload}', name: "NotificationService");
+
         // 알림 클릭 이벤트 처리
-        final payload = response.payload;
-        if (payload != null) {
-          _handleNotificationClick(payload);
+        if (response.payload != null) {
+          _handleNotificationClick(response.payload!);
+        } else {
+          log('Payload가 null입니다.', name: "NotificationService");
         }
       },
     );
-
-    // 포그라운드 메시지 처리
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      log("포그라운드 메시지 수신: ${message.messageId}", name: "NotificationService");
-      handleIncomingMessage(message);
-    });
   }
 
-  void _handleNotificationClick(String payload) {
-    // 알림 클릭 이벤트 처리 로직
-    print('알림 클릭됨, 데이터: $payload');
+  void _handleNotificationClick(String issueId) {
+    final context = navigatorKey.currentContext;
 
+    clickedIssueId = issueId;
+
+    Navigator.pushAndRemoveUntil(
+      context!,
+      MaterialPageRoute(
+        builder: (context) => AppScreen(),
+      ),
+          (route) => false, // 이전 모든 화면 제거
+    );
   }
 
   void handleIncomingMessage(RemoteMessage message) async {
@@ -61,12 +69,9 @@ class NotificationService {
         date: DateTime.parse(message.data['date']),
         addr: message.data['addr'] ?? '주소 없음',
       );
+
       final context = navigatorKey.currentContext;
       final issueProvider = Provider.of<IssueProvider>(context!, listen: false);
-      issueProvider.addIssue(newIssue);
-
-      final String notificationTitle = '[${newIssue.addr}] ${newIssue.category} 알림! 📢';
-      final String notificationBody = newIssue.title;
 
       // 위치 조건 확인
       final bool shouldNotify = await _checkLocationCondition(
@@ -76,10 +81,13 @@ class NotificationService {
 
       if (shouldNotify) {
         // 로컬 알림 전송
-        _sendLocalNotification(notificationTitle, notificationBody);
+        _sendLocalNotification(newIssue);
       } else {
         log('위치 조건을 만족하지 않아 알림을 전송하지 않음.', name: "NotificationService");
       }
+
+      // 데이터 추가
+      issueProvider.addIssue(newIssue);
     } catch (e) {
       log('알림 처리 중 오류 발생: $e', name: "NotificationService");
     }
@@ -108,7 +116,10 @@ class NotificationService {
     }
   }
 
-  void _sendLocalNotification(String title, String body) async {
+  void _sendLocalNotification(Issue issue) async {
+    final String title = '[${issue.addr}] ${issue.category} 알림! 📢';
+    final String body = issue.title;
+
     const androidDetails = AndroidNotificationDetails(
       'high_importance_channel',
       'high_importance_channel',
@@ -126,6 +137,7 @@ class NotificationService {
       title,
       body,
       notificationDetails,
+      payload: '${issue.issueId}',
     );
 
     log('로컬 알림 전송 완료: $title - $body', name: "NotificationService");
