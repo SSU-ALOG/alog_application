@@ -29,6 +29,8 @@ class ApiService {
     final url = Uri.parse('$baseUrl/issues/recent');
     final response = await http.get(url);
 
+    dev.log("fetchRecentIssues", name: "ApiService");
+
     if (response.statusCode == 200) {
       final decodedBody = utf8.decode(response.bodyBytes); // 한글 decode
       List jsonResponse = json.decode(decodedBody);

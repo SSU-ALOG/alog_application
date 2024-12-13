@@ -149,7 +149,7 @@ Future<void> listGlobalEdges() async {
 }
 
 // 채널 생성
-Future<String?> createChannel() async {
+Future<String?> createChannel(int issueId) async {
   String accessKey = dotenv.env['ACCESS_KEY_ID'] ?? '';  // .env 파일에서 가져옴
   String secretKey = dotenv.env['SECRET_KEY'] ?? '';  // .env 파일에서 가져옴
   String method = 'POST';
@@ -189,36 +189,11 @@ Future<String?> createChannel() async {
       "type": "AUTO_UPLOAD",
       "format": "MP4",
       "bucketName": "alog-streaming",
-      "filePath": "/livestation",
-      "accessControl": "PRIVATE"
+      "filePath": "/livestation/$issueId",  // issueId를 사용하여 동적으로 설정
+      "accessControl": "PUBLIC_READ"
     },
     "isStreamFailOver": true,
     "drmEnabledYn": false,
-    /*
-    // cdn 생성
-    "channelName" : "testchannel1",
-    "cdn" : {
-      "createCdn":true,
-      "cdnType":"GLOBAL_EDGE",
-      "profileId" : 2389,
-      "regionType" : "KOREA"
-    },
-    "qualitySetId" : 4329, // 4329
-    "useDvr" : true,
-    "immediateOnAir" : true,
-    "timemachineMin" : 360,
-    "envType" : "DEV",
-    "outputProtocol" : "HLS",
-    "record": {
-      "type": "AUTO_UPLOAD",
-      "format": "MP4",
-      "bucketName": "alog-streaming",
-      "filePath": "/livestation",
-      "accessControl": "PRIVATE"
-    },
-    "isStreamFailOver": true,
-    "drmEnabledYn": false,
-    */
   };
 
   // HTTP 요청
@@ -1284,7 +1259,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     // RTMP URL 생성
     String myUrl;
     try {
-      String? newChannelId = await createChannel();
+      int issueId = widget.id ?? 0;  // widget.id가 null이면 0을 기본값으로 사용
+      String? newChannelId = await createChannel(issueId);
       setState(() {
         channelId = newChannelId; // 상태 업데이트
       });

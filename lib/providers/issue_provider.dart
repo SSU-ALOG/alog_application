@@ -14,6 +14,8 @@ class IssueProvider with ChangeNotifier {
   List<Issue> get issues => _issues;
 
   Future<void> fetchRecentIssues() async {
+
+    log("fetchRecentIssues", name: "IssueProvider");
     try {
       _issues = await _apiService.fetchRecentIssues();
 

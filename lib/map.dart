@@ -65,19 +65,19 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   List<NMarker> _filteredMarkers = [];
   List<NMarker> _clusterMarkers = [];
   List<Map<String, dynamic>> _currentContentList = [];
-  //List<Map<String, dynamic>> _contentList = [];
-  List<Map<String, dynamic>> _contentList = [
-    {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-    {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
-    {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-    {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
-    {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
-    {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
-    {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
-    {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
-    {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
-    {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
-  ];
+  List<Map<String, dynamic>> _contentList = [];
+  // List<Map<String, dynamic>> _contentList = [
+  //   {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
+  //   {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
+  //   {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
+  //   {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
+  //   {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
+  //   {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
+  //   {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
+  //   {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
+  //   {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
+  //   {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
+  // ];
 
   @override
   void initState() {
@@ -85,15 +85,15 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     _requestLocationPermission();
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //
-  //   if (!_isDataLoaded) {
-  //     _loadData();
-  //     _isDataLoaded = true;
-  //   }
-  // }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_isDataLoaded) {
+      _loadData();
+      _isDataLoaded = true;
+    }
+  }
 
   // IssueProvider에서 데이터 로드
   void _loadData() {
