@@ -69,7 +69,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     super.didChangeDependencies();
 
     if (!_isDataLoaded) {
-      _initializeData();
+      _initializeData(); // 데이터 초기화
       _isDataLoaded = true;
     }
   }
@@ -77,21 +77,22 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void _initializeData() {
     final messageProvider = Provider.of<MessageProvider>(context, listen: false);
 
-    messageProvider.addListener(() {
-      _updateData(messageProvider);
-    });
-  }
+    // MessageProvider에서 데이터를 가져옴
+    futureMessages = Future(() async {
+      // MessageProvider의 데이터를 가져와서 빈 데이터 처리
+      final List<Message> messages = messageProvider.messages;
+      if (messages.isEmpty) {
+        return [];
+      }
 
-  // 데이터 업데이트
-  void _updateData(MessageProvider messageProvider) {
-    setState(() {
-      futureMessages = Future.value(messageProvider.messages.map((message) {
-        // "찾습니다"가 포함된 메시지를 "실종알림"으로 분류
+      // "찾습니다" 문구를 기준으로 분류 업데이트
+      for (var message in messages) {
         if (message.msgContent.contains("찾습니다")) {
           message.emergencyStep = "실종알림";
         }
-        return message;
-      }).toList());
+      }
+
+      return messages;
     });
   }
 
@@ -199,12 +200,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   // 메시지 리스트를 빌드하는 함수
   Widget _buildMessageList() {
     return FutureBuilder<List<Message>>(
-      future: futureMessages,
+      future: futureMessages, // 초기화된 futureMessages
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          // 데이터 로드 중
+          return const Center(child: CircularProgressIndicator());
         }
+
         if (snapshot.hasError) {
+          // 오류 발생 시
           return Center(child: Text('Error: ${snapshot.error}'));
         }
 
@@ -212,14 +216,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         final filteredMessages = _applyFilters(messages);
 
         if (filteredMessages.isEmpty) {
-          return Center(
-            child: const Text(
-              '검색 결과가 없습니다.',
+          // 메시지가 없을 경우
+          return const Center(
+            child: Text(
+              '재난 문자 내용이 없습니다.',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
           );
         }
 
+        // 메시지가 있을 경우 ListView로 렌더링
         return ListView.builder(
           itemCount: filteredMessages.length,
           itemBuilder: (context, index) {
@@ -235,6 +241,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       },
     );
   }
+
 
   // 필터 탭 내용
   Widget _buildEmergencyStepFilter() {
