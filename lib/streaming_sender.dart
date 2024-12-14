@@ -482,7 +482,7 @@ Future<String?> getThumbnailUrl(String? channelId) async {
 // Firestore 데이터 추가 -  방송 시작 시 입력
 Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
   try {
-    await FirebaseFirestore.instance.collection('ServiceURL').add({
+    await FirebaseFirestore.instance.collection('ServiceUrl').add({
       'issueId': issueId,
       'liveUrl': liveUrl,
       'thumbnailUrl': thumbnailUrl,
@@ -497,7 +497,7 @@ Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) asyn
 
 // Firestore - 방송 종료 시 방송여부 FALSE로 변경
 Future<void> endBroadcast(String documentId) async {
-  await FirebaseFirestore.instance.collection('ServiceURL').doc(documentId).update({
+  await FirebaseFirestore.instance.collection('ServiceUrl').doc(documentId).update({
     'isLive': false,
   });
 }
@@ -873,11 +873,12 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   // 방송 시작 시 documentId 받아오기
   String? documentId;  // documentId를 로컬 변수로 저장
 
-  Future<void> _startBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
+  Future<void> _startBroadcast(int issueId, String channelId, String liveUrl, String thumbnailUrl) async {
     try {
       // Firestore에 방송 정보 저장
       var docRef = await FirebaseFirestore.instance.collection('ServiceUrl').add({
         'issueId': issueId,         // Firestore에 issueId 저장
+        'channelId' : channelId,
         'liveUrl': liveUrl,        // 방송 URL
         'thumbnailUrl': thumbnailUrl, // 썸네일 URL
         'isLive': true,             // 방송 상태는 true
@@ -899,7 +900,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       if (documentId != null) {
         // documentId를 사용하여 Firestore에서 isLive를 false로 업데이트
         await FirebaseFirestore.instance
-            .collection('ServiceURL')
+            .collection('ServiceUrl')
             .doc(documentId)  // 로컬에 저장된 documentId로 문서 찾기
             .update({
           'isLive': false,  // 방송 종료 시 isLive를 false로 설정
@@ -958,7 +959,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                   String ServiceUrl = await getServiceUrl(channelId) ?? ''; // 송출 url 조회
                   String thumbnailUrl = await getThumbnailUrl(channelId) ?? ''; // 썸네일 URL 조회
                   int? issueId = widget.id ?? 0; // 디비 연결안되어 있어서 현재 0으로 가져와지는거 정상
-                  await _startBroadcast(issueId, ServiceUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
+                  await _startBroadcast(issueId, channelId, ServiceUrl, thumbnailUrl);  // 방송 시작 후 documentId 업데이트
 
                   debugPrint("Streaming started with URL: $ServiceUrl");
                 } else {
@@ -1353,31 +1354,5 @@ Future<void> sendMessage(String userId, String channelId, String messageText) as
     print("Message sent");
   } catch (e) {
     print("Error sending message: $e");
-  }
-}
-
-// firestore에서 썸네일 가져와서 반환
-Future<String?> getFirestoreThumbnail(int issueId) async {
-  try {
-    // Firestore에서 `serviceURL` 컬렉션에 대한 쿼리
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('serviceURL')  // 컬렉션 이름
-        .where('issueId', isEqualTo: issueId)  // `issueId`가 일치하는 문서
-        .where('isLive', isEqualTo: true)  // `isLive`가 true인 문서
-        .get();  // 쿼리 실행
-
-    // 쿼리 결과가 있는지 확인
-    if (snapshot.docs.isNotEmpty) {
-      // 첫 번째 문서를 Firebase 초기화i가져오고 `thumbnailUrl` 반환
-      var document = snapshot.docs.first;
-      return document['thumbnailUrl'];  // `thumbnailUrl` 값을 반환
-    } else {
-      // 일치하는 문서가 없으면 null 반환
-      return null;
-    }
-  } catch (e) {
-    // 에러가 발생하면 에러 메시지 출력
-    print("Error fetching data: $e");
-    return null;
   }
 }
