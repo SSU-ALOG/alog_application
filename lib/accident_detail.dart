@@ -168,8 +168,8 @@ class _DetailScreenState extends State<DetailScreen> {
                           Padding(
                             padding: const EdgeInsets.only(left: 8.0),
                           // Positioned(
-                            top: 16.0,
-                            right: 16.0,
+                          //   top: 16.0,
+                          //   right: 16.0,
                             child: Image.asset(
                               'assets/images/verification_mark.png',
                               width: 80,
