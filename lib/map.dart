@@ -1174,12 +1174,17 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      _selectedContent?['title'] ?? '사고 제목',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                    Flexible(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal, // 가로 스크롤
+                        child: Text(
+                          _selectedContent?['title'] ?? '사고 제목',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
