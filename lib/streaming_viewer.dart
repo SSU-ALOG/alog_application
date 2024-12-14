@@ -51,7 +51,6 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
     liveUrlsStream = _fetchLiveUrls(widget.id);
 
     userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
-    userJoined(userId ?? 'defaultUserId', widget.id ?? 0); // 시청자가 입장할 때 호출
   }
 
   Stream<List<Map<String, dynamic>>> _fetchLiveUrls(int? issueId) {
@@ -72,7 +71,6 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
 
   @override
   void dispose() {
-    userLeft(userId ?? 'defaultUserId', widget.id ?? 0); // 시청자가 퇴장할 때 호출
     _pageController.dispose();
     super.dispose();
   }
@@ -378,8 +376,6 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       ),
     );
   }
-
-
 
   Future<void> userJoined(String userId, int issueId, String channelId) async {
     try {
