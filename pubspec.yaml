@@ -35,7 +35,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  flutter_dotenv: ^5.1.0
+  flutter_dotenv: ^5.2.1
   permission_handler: ^11.3.1
   http: ^1.2.2
 
@@ -66,9 +66,7 @@ dependencies:
   provider: ^6.1.2
   flutter_launcher_icons: ^0.14.2
   flutter_native_splash: ^2.4.3
-
-  # 좌표 주소 변환 관련
-#  naver_map_plugin: ^0.9.6
+  intl: ^0.20.1
 
 dev_dependencies:
   flutter_test:
@@ -105,6 +103,7 @@ flutter:
   assets:
     - .env
     - assets/images/
+    - assets/videos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

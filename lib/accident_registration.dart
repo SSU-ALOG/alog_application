@@ -43,7 +43,6 @@ class _AccidentRegistScreenState extends State<AccidentRegistScreen> {
   final NLatLng defaultLocation = const NLatLng(37.4960895, 126.957504); //  후에 수정
   String repArea = '';
 
-
   // save data to db
   Future<void> _submitIssue() async {
     if (_currentLocation == null) {
