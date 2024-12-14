@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'main.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
@@ -565,6 +566,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   void initState() {
     super.initState();
     initializeCamera();  // 카메라 초기화를 initState에서 호출
+    KeyboardTransparency.setTransparentKeyboard(); // 투명 키보드 활성화
     WidgetsBinding.instance.addObserver(this);
 
     userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
@@ -656,7 +658,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     return WillPopScope(
       onWillPop: _onWillPop, // 뒤로가기 버튼 동작 정의
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        //resizeToAvoidBottomInset: false,
         extendBodyBehindAppBar: true,
         appBar: _buildAppBar(),
         body: Stack(
@@ -676,7 +678,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+        icon: Icon(Icons.arrow_back_ios, color: Colors.white),
         onPressed: () async {
           if (isStreaming) {
             // 스트리밍 종료 팝업
@@ -695,7 +697,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       ),
       title: Text(
         widget.title ?? '사고 제목', // widget.title이 null일 경우 기본값으로 '사고 제목' 사용
-        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
       actions: [
