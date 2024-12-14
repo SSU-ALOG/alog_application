@@ -165,7 +165,9 @@ class _DetailScreenState extends State<DetailScreen> {
                         ),
                         SizedBox(width: 12.0),
                         if (widget.issue.verified)
-                          Positioned(
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                          // Positioned(
                             top: 16.0,
                             right: 16.0,
                             child: Image.asset(
