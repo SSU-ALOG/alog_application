@@ -66,6 +66,7 @@ dependencies:
   provider: ^6.1.2
   flutter_launcher_icons: ^0.14.2
   flutter_native_splash: ^2.4.3
+  intl: ^0.20.1
 
   # 좌표 주소 변환 관련
 #  naver_map_plugin: ^0.9.6

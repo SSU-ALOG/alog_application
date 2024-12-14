@@ -115,7 +115,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     setState(() async {
       _contentList = issueProvider.issues
           .where((issue) => issue.status != '상황종료')
-          .map((issue) {
+          .map((issue) async {
         return {
           "id": issue.issueId,
           "title": issue.title,
@@ -123,10 +123,10 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           "description": issue.description ?? "내용이 없습니다.",
           "latitude": issue.latitude,
           "longitude": issue.longitude,
-          "view": 0,
+          "view": await fetchViewerCount('${issue.issueId}'),
           "verified": issue.verified,
         };
-      }).toList();
+      }).cast<Map<String, Object?>>().toList();
       dev.log("Content List: $_contentList", name: "MapScreen");
 
       await _addContentMarkers();

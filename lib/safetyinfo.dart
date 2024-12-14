@@ -1,8 +1,8 @@
 
 import 'package:flutter/material.dart';
-import 'custom_search_bar.dart'; // custom_search_bar.dart 가져오기
-import 'custom_tab_view.dart'; // custom_tab_view.dart 가져오기
-import 'custom_choice_chip_group.dart';
+import 'package:alog/widget/custom_search_bar.dart'; // custom_search_bar.dart 가져오기
+import 'package:alog/widget/custom_tab_view.dart'; // custom_tab_view.dart 가져오기
+import 'package:alog/widget/custom_choice_chip_group.dart';
 
 
 class SafetyInfoScreen extends StatefulWidget {

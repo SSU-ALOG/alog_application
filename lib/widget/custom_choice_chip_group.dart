@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'custom_chip.dart'; // CustomChip 임포트
+import 'package:alog/widget/custom_chip.dart'; // CustomChip 임포트
 
 class CustomChoiceChipGroup extends StatefulWidget {
   final List<String> options; // 선택 가능한 옵션 리스트

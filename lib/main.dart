@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:alog/providers/message_provider.dart';
 import 'package:alog/user_info.dart';
 import 'package:alog/models/issue.dart';
 import 'package:alog/providers/issue_provider.dart';
@@ -19,7 +20,7 @@ import 'map.dart';
 import 'incident.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
-import 'message.dart';
+import 'notification.dart';
 import 'safetyinfo.dart';
 import 'user_login.dart';
 import 'user_info.dart';
@@ -36,6 +37,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => IssueProvider()),
+        ChangeNotifierProvider(create: (_) => MessageProvider()),
         ChangeNotifierProvider(create: (_) => UserData()),
       ],
       child: const App(),
@@ -177,6 +179,7 @@ class _AppScreenState extends State<AppScreen> {
     // 데이터 초기화는 한 번만 실행
     if (!_isDataLoaded) {
       Provider.of<IssueProvider>(context, listen: false).fetchRecentIssues();
+      Provider.of<MessageProvider>(context, listen: false).fetchRecentMessages();
       _isDataLoaded = true;
     }
   }
