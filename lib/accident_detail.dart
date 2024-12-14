@@ -177,21 +177,15 @@ class _DetailScreenState extends State<DetailScreen> {
                       ]),
                       SizedBox(height: 8.0),
 
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              widget.issue.title,
-                              style: TextStyle(
-                                fontSize: 25,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              maxLines: 5, // 최대 5줄까지 허용
-                              overflow: TextOverflow.ellipsis, // 초과 시 ...표시
-                            ),
-                          ),
-                        ],
+                      Text(
+                        widget.issue.title,
+                        style: TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 5, // 최대 5줄까지 허용
+                        overflow: TextOverflow.ellipsis, // 초과 시 ...표시
                       ),
                       SizedBox(height: 8.0),
 
@@ -226,19 +220,15 @@ class _DetailScreenState extends State<DetailScreen> {
                       ),
                       SizedBox(height: 16.0),
 
-                      Row(children: [
-                        Flexible(
-                          child: Text(
-                            widget.issue.description ?? "none",
-                            style: TextStyle(
-                              color: Colors.grey.shade300,
-                              fontSize: 16,
-                            ),
-                            maxLines: 5, // 최대 5줄까지 허용
-                            overflow: TextOverflow.ellipsis, // 초과 시 ...표시
-                          ),
+                      Text(
+                        widget.issue.description ?? "none",
+                        style: TextStyle(
+                          color: Colors.grey.shade300,
+                          fontSize: 16,
                         ),
-                      ]),
+                        maxLines: 5, // 최대 5줄까지 허용
+                        overflow: TextOverflow.ellipsis, // 초과 시 ...표시
+                      ),
                     ],
                   ),
                 ),
