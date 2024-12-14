@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 // signiture 생성 함수
@@ -479,30 +480,6 @@ Future<String?> getThumbnailUrl(String? channelId) async {
   }
 }
 
-// Firestore 데이터 추가 -  방송 시작 시 입력
-Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
-  try {
-    await FirebaseFirestore.instance.collection('ServiceUrl').add({
-      'issueId': issueId,
-      'liveUrl': liveUrl,
-      'thumbnailUrl': thumbnailUrl,
-      'isLive': true,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    print('방송 정보가 Firestore에 추가되었습니다.');
-  } catch (e) {
-    print('Firestore에 데이터를 추가하는 중 오류가 발생했습니다: $e');
-  }
-}
-
-// Firestore - 방송 종료 시 방송여부 FALSE로 변경
-Future<void> endBroadcast(String documentId) async {
-  await FirebaseFirestore.instance.collection('ServiceUrl').doc(documentId).update({
-    'isLive': false,
-  });
-}
-
-
 // Declare the camera descriptions globally
 List<CameraDescription> cameras = [];
 
@@ -528,6 +505,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   final TextEditingController _commentController = TextEditingController();
   final List<Map<String, String>> messages = []; // 유저 이름과 메시지를 담는 리스트
 
+  FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
+
   CameraController? controller;
   String? url;
   VideoPlayerController? videoController;
@@ -543,7 +522,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   String? userId;
 
 
- // bool get isControllerInitialized => controller?.value.isInitialized ?? false;
+  // bool get isControllerInitialized => controller?.value.isInitialized ?? false;
   bool get isStreaming => controller?.value.isStreamingVideoRtmp ?? false;
   bool get isStreamingVideoRtmp => controller?.value.isStreamingVideoRtmp ?? false;
   bool get isRecordingVideo => controller?.value.isRecordingVideo ?? false;
@@ -699,7 +678,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
           padding: const EdgeInsets.all(8.0),
           // Chatting 컬렉션을 실시간으로 구독하여, 채팅을 화면에 표시
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
+            stream: streamingFirestore
                 .collection('Viewers')
                 .where('channelId')  // 특정 채널에 대한 시청자 정보
                 .snapshots(),  // 실시간으로 데이터 스트림을 받아옵니다.
@@ -876,7 +855,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   Future<void> _startBroadcast(int issueId, String channelId, String liveUrl, String thumbnailUrl) async {
     try {
       // Firestore에 방송 정보 저장
-      var docRef = await FirebaseFirestore.instance.collection('ServiceUrl').add({
+      var docRef = await streamingFirestore.collection('ServiceUrl').add({
         'issueId': issueId,         // Firestore에 issueId 저장
         'channelId' : channelId,
         'liveUrl': liveUrl,        // 방송 URL
@@ -899,7 +878,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     try {
       if (documentId != null) {
         // documentId를 사용하여 Firestore에서 isLive를 false로 업데이트
-        await FirebaseFirestore.instance
+        await streamingFirestore
             .collection('ServiceUrl')
             .doc(documentId)  // 로컬에 저장된 documentId로 문서 찾기
             .update({
@@ -1199,14 +1178,14 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   }
 
   // URL을 입력할 수 있는 AlertDialog를 표시하고, 사용자가 입력한 URL을 반환
-    Future<String> _getUrl(String streamKey) async {
-      // 기본 URL
-      String baseUrl = "rtmp://rtmp-ls2-k1.video.media.ntruss.com:8080/relay";
-      // 완성된 URL
-      String result = "$baseUrl/$streamKey";
+  Future<String> _getUrl(String streamKey) async {
+    // 기본 URL
+    String baseUrl = "rtmp://rtmp-ls2-k1.video.media.ntruss.com:8080/relay";
+    // 완성된 URL
+    String result = "$baseUrl/$streamKey";
 
 
-      return await showDialog(
+    return await showDialog(
         context: context,
         builder: (context) {
           return AlertDialog(
@@ -1340,19 +1319,42 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     logError(e.code, e.description ?? "No description found");
     print('Error: ${e.code}\n${e.description ?? "No description found"}');
   }
-}
 
-// 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
-Future<void> sendMessage(String userId, String channelId, String messageText) async {
-  try {
-    await FirebaseFirestore.instance.collection('Chatting').add({
-      'userId': userId,
-      'channelId': channelId,
-      'text': messageText,
-      'createdAt': FieldValue.serverTimestamp(),  // 메시지 전송 시간
+  // Firestore 데이터 추가 -  방송 시작 시 입력
+  Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
+    try {
+      await streamingFirestore.collection('ServiceUrl').add({
+        'issueId': issueId,
+        'liveUrl': liveUrl,
+        'thumbnailUrl': thumbnailUrl,
+        'isLive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      print('방송 정보가 Firestore에 추가되었습니다.');
+    } catch (e) {
+      print('Firestore에 데이터를 추가하는 중 오류가 발생했습니다: $e');
+    }
+  }
+
+// Firestore - 방송 종료 시 방송여부 FALSE로 변경
+  Future<void> endBroadcast(String documentId) async {
+    await streamingFirestore.collection('ServiceUrl').doc(documentId).update({
+      'isLive': false,
     });
-    print("Message sent");
-  } catch (e) {
-    print("Error sending message: $e");
+  }
+
+  // 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
+  Future<void> sendMessage(String userId, String channelId, String messageText) async {
+    try {
+      await streamingFirestore.collection('Chatting').add({
+        'userId': userId,
+        'channelId': channelId,
+        'text': messageText,
+        'createdAt': FieldValue.serverTimestamp(),  // 메시지 전송 시간
+      });
+      print("Message sent");
+    } catch (e) {
+      print("Error sending message: $e");
+    }
   }
 }
