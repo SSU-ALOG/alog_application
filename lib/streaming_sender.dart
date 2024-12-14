@@ -675,7 +675,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+        icon: Icon(Icons.arrow_back_ios, color: Colors.white),
         onPressed: () async {
           if (isStreaming) {
             // 스트리밍 종료 팝업
@@ -694,7 +694,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       ),
       title: Text(
         widget.title ?? '사고 제목', // widget.title이 null일 경우 기본값으로 '사고 제목' 사용
-        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
       actions: [

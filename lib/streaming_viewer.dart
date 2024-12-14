@@ -188,14 +188,14 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios, color: Colors.black),
+        icon: Icon(Icons.arrow_back_ios, color: Colors.white),
         onPressed: () {
           Navigator.pop(context);
         },
       ),
       title: Text(
         widget.title ?? '사고 제목',
-        style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
       actions: [
