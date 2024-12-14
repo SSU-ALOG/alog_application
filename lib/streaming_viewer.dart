@@ -190,6 +190,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       leading: IconButton(
         icon: Icon(Icons.arrow_back_ios, color: Colors.white),
         onPressed: () {
+          userLeft(userId ?? 'defaultUserId', widget.id ?? 0, currentChannelId ?? '');
           Navigator.pop(context);
         },
       ),

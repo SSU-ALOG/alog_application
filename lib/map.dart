@@ -1300,7 +1300,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           ),
           const SizedBox(height: 8),
           Text(
-            _selectedContent?['detail'] ?? '설명 내용이 없습니다.',
+            _selectedContent?['description'] ?? '설명 내용이 없습니다.',
             style: const TextStyle(
               fontSize: 16,
               color: Colors.black87,
