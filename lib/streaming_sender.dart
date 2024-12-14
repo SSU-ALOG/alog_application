@@ -566,7 +566,6 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   void initState() {
     super.initState();
     initializeCamera();  // 카메라 초기화를 initState에서 호출
-    KeyboardTransparency.setTransparentKeyboard(); // 투명 키보드 활성화
     WidgetsBinding.instance.addObserver(this);
 
     userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
