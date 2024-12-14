@@ -656,6 +656,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     return WillPopScope(
       onWillPop: _onWillPop, // 뒤로가기 버튼 동작 정의
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         extendBodyBehindAppBar: true,
         appBar: _buildAppBar(),
         body: Stack(
@@ -875,11 +876,11 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                         controller: _commentController,
                         decoration: InputDecoration(
                           hintText: 'Comment',
-                          hintStyle: TextStyle(color: Colors.black),
+                          hintStyle: TextStyle(color: Colors.white),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
                         ),
-                        style: TextStyle(color: Colors.black),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                     IconButton(
