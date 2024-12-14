@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:developer';
 import 'package:alog/providers/message_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:alog/models/message.dart';
@@ -7,6 +5,7 @@ import 'package:alog/services/api_service.dart';
 import 'package:provider/provider.dart';
 import 'package:alog/widget/custom_tab_view.dart'; // CustomTabView를 import
 import 'package:alog/widget/custom_choice_chip_group.dart'; // CustomChoiceChipGroup import
+import 'package:intl/intl.dart';
 
 // Emergency Steps (긴급단계 리스트)
 const List<String> emergencySteps = [
@@ -321,6 +320,11 @@ class MessageCard extends StatelessWidget {
     }
   }
 
+  String _formatDate(String isoString) {
+    final dateTime = DateTime.parse(isoString);
+    return DateFormat('yyyy-MM-dd HH:mm').format(dateTime);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -361,7 +365,7 @@ class MessageCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        messageTime, // 오른쪽 상단에 날짜 표시
+                        _formatDate(messageTime), // 날짜 포맷 적용
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,

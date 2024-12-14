@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:alog/models/issue.dart';
 import 'package:alog/models/message.dart';
+import 'package:alog/models/short_video.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -68,6 +69,29 @@ class ApiService {
     } else {
       dev.log('Failed to fetch recent messages: ${response.statusCode}, ${response.body}', name: 'ApiService');
       throw Exception('Failed to load recent messages');
+    }
+  }
+
+  // REST API: short_video table 내 데이터 가져오기
+  Future<List<ShortVideo>> fetchShortVideos(int issueId) async {
+    final response = await http.get(Uri.parse('$baseUrl/short-videos?$issueId'));
+
+    if (response.statusCode == 200) {
+      final decodedBody = utf8.decode(response.bodyBytes); // 한글 decode
+      List jsonResponse = json.decode(decodedBody);
+
+      return jsonResponse.map((data) {
+        // ShortVideo 객체로 변환
+        final shortvideo = ShortVideo.fromJson(data);
+        return shortvideo;
+        // return Issue.fromJson(data);
+      }).toList();
+
+      // final List<dynamic> data = json.decode(response.body);
+      // return data.map((json) => ShortVideo.fromJson(json)).toList();
+    } else {
+      dev.log('Failed to fetch short videos: ${response.statusCode}, ${response.body}', name: 'ApiService');
+      throw Exception('Failed to fetch short videos: ${response.statusCode}, ${response.body}');
     }
   }
 }

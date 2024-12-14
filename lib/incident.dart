@@ -504,12 +504,17 @@ class EventCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(
+                      Expanded(
+                      child: Text(
                         issue.title,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16.0,
                         ),
+                        // softWrap: true, // 줄바꿈 허용
+                        maxLines: 5, // 최대 5줄까지 허용
+                        overflow: TextOverflow.ellipsis, // 초과 시 ...표시
+                      ),
                       ),
                       if (issue.verified) // verified가 true일 때만 아이콘 표시
                         Padding(
