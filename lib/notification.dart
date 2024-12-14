@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:alog/providers/message_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:alog/models/message.dart';
@@ -77,10 +78,17 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   void _initializeData() {
     final messageProvider = Provider.of<MessageProvider>(context, listen: false);
 
+    messageProvider.addListener(() {
+      _updateContentList(messageProvider);
+    });
+  }
+
+  void _updateContentList(MessageProvider messageProvider) {
     // MessageProvider에서 데이터를 가져옴
     futureMessages = Future(() async {
       // MessageProvider의 데이터를 가져와서 빈 데이터 처리
       final List<Message> messages = messageProvider.messages;
+
       if (messages.isEmpty) {
         return [];
       }
