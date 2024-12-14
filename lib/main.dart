@@ -1,5 +1,6 @@
 import 'dart:developer';
 
+import 'package:alog/providers/message_provider.dart';
 import 'package:alog/user_info.dart';
 import 'package:alog/models/issue.dart';
 import 'package:alog/providers/issue_provider.dart';
@@ -19,7 +20,7 @@ import 'map.dart';
 import 'incident.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
-import 'message.dart';
+import 'notification.dart';
 import 'safetyinfo.dart';
 import 'user_login.dart';
 import 'user_info.dart';
@@ -36,6 +37,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => IssueProvider()),
+        ChangeNotifierProvider(create: (_) => MessageProvider()),
         ChangeNotifierProvider(create: (_) => UserData()),
       ],
       child: const App(),
@@ -46,7 +48,21 @@ void main() async {
 // 초기화 함수
 Future<void> initialize() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();  // Firebase 초기화
+
+  // FCM 알림
+  await Firebase.initializeApp();
+
+  // 라이브 스트리밍
+  await Firebase.initializeApp(
+    name: 'streamingApp',  // 두 번째 앱의 이름 지정
+    options: FirebaseOptions(
+      apiKey: "AIzaSyC9cB0sfqJEpE4Ge6whn-lt3SxFMA1-LKQ",  // API Key
+      appId: "1:1052139545198:android:7a42b2de161e6da6487c7f",  // 앱 ID
+      messagingSenderId: "1052139545198",  // 메시징 발신자 ID
+      projectId: "alog-81aea",  // 프로젝트 ID
+      storageBucket: "alog-81aea.firebasestorage.app",  // 스토리지 버킷
+    ),
+  );
 
   // 환경 변수 설정
   await dotenv.load(fileName: '.env');
@@ -118,7 +134,7 @@ class _AppScreenState extends State<AppScreen> {
   final List<Widget> _screens = [
     const MapScreen(),
     const NotificationsScreen(),
-    const SafetyInfoScreen(),
+    SafetyInfoScreen(),
     const IncidentScreen(),
   ];
 
@@ -177,6 +193,7 @@ class _AppScreenState extends State<AppScreen> {
     // 데이터 초기화는 한 번만 실행
     if (!_isDataLoaded) {
       Provider.of<IssueProvider>(context, listen: false).fetchRecentIssues();
+      Provider.of<MessageProvider>(context, listen: false).fetchRecentMessages();
       _isDataLoaded = true;
     }
   }

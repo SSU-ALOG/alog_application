@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/user_data.dart'; // UserData 클래스가 정의된 파일
 
 // signiture 생성 함수
@@ -528,6 +529,8 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   final TextEditingController _commentController = TextEditingController();
   final List<Map<String, String>> messages = []; // 유저 이름과 메시지를 담는 리스트
 
+  FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
+
   CameraController? controller;
   String? url;
   VideoPlayerController? videoController;
@@ -633,7 +636,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
       if (shouldStop) {
         await stopVideoStreaming(); // 스트리밍 종료
-        await stopBroadcast();      // 방송 종료
+        await stopBroadcast(channelId ?? '');      // 방송 종료
         setState(() {});
         return true; // 뒤로가기 허용
       } else {
@@ -658,7 +661,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
         body: Stack(
           children: [
             Positioned.fill(child: _buildCameraPreview()),
-            _buildChatSection(chatHeight),
+            _buildChatSection(chatHeight, channelId),
             _buildActionButtons(),
           ],
         ),
@@ -680,7 +683,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
             if (shouldStop) {
               await stopVideoStreaming(); // 스트리밍 종료
-              await stopBroadcast();      // 방송 종료
+              await stopBroadcast(channelId ?? '');      // 방송 종료
               setState(() {});            // 상태 갱신
               Navigator.pop(context);     // 뒤로가기
             }
@@ -697,12 +700,23 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
       actions: [
         Padding(
           padding: const EdgeInsets.all(8.0),
-          // Chatting 컬렉션을 실시간으로 구독하여, 채팅을 화면에 표시
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
+          // 실시간 시청자 수
+          child: channelId == null
+              ? Row(
+            children: [
+              Icon(Icons.remove_red_eye, color: Colors.grey),
+              SizedBox(width: 5),
+              Text(
+                '0',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          )
+              : StreamBuilder<QuerySnapshot>(
+            stream: streamingFirestore
                 .collection('Viewers')
-                .where('channelId')  // 특정 채널에 대한 시청자 정보
-                .snapshots(),  // 실시간으로 데이터 스트림을 받아옵니다.
+                .where('channelId', isEqualTo: channelId)
+                .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return Row(
@@ -710,7 +724,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                     Icon(Icons.remove_red_eye, color: Colors.grey),
                     SizedBox(width: 5),
                     Text(
-                      '0',  // 데이터를 아직 못 받았을 때는 0으로 표시
+                      '0',
                       style: TextStyle(color: Colors.grey),
                     ),
                   ],
@@ -765,58 +779,87 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   }
 
   // 채팅 영역 분리
-  Widget _buildChatSection(double chatHeight) {
+  Widget _buildChatSection(double chatHeight, String? channelId) {
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       height: chatHeight,
-      child: Container(
-        color: Colors.transparent,
-        child: Column(
-          children: [
+      child: Column(
+        children: [
+          // 채널 ID가 null이면 채팅 UI를 숨김
+          if (channelId != null)
             Expanded(
-              child: ListView.builder(
-                reverse: true,
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 10.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 5, horizontal: 6),
-                        margin: EdgeInsets.only(top: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              messages[index]['user']!,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+              child: StreamBuilder<QuerySnapshot>(
+                stream: streamingFirestore
+                    .collection('Chatting')
+                    .where('channelId', isEqualTo: channelId)
+                    .orderBy('createdAt', descending: true) // 타임스탬프 기준 내림차순 정렬
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Container();  // 채팅이 없을 경우 빈 공간
+                  }
+
+                  // 채팅 메시지들 가져오기
+                  final chatMessages = snapshot.data!.docs
+                      .map((doc) => doc.data() as Map<String, dynamic>)
+                      .toList();
+
+                  return ListView.builder(
+                    reverse: true,
+                    itemCount: chatMessages.length,
+                    itemBuilder: (context, index) {
+                      final message = chatMessages[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 10.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 5, horizontal: 6),
+                            margin: EdgeInsets.only(top: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(15),
                             ),
-                            Text(
-                              messages[index]['message']!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.black,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message['userId'] ?? 'Unknown',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                Text(
+                                  message['text'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
               ),
-            ),
+            )
+          else
+          // 채널 ID가 null일 경우 채팅 UI는 표시되지 않음
+            Container(),
+
+          // 메시지 입력 필드
+          if (channelId != null)  // 채널 ID가 null일 경우 입력 필드도 숨김
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Container(
@@ -832,11 +875,11 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                         controller: _commentController,
                         decoration: InputDecoration(
                           hintText: 'Comment',
-                          hintStyle: TextStyle(color: Colors.white),
+                          hintStyle: TextStyle(color: Colors.black),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
                         ),
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.black),
                       ),
                     ),
                     IconButton(
@@ -845,18 +888,10 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                         if (_commentController.text.isNotEmpty) {
                           String messageText = _commentController.text;
                           String currentUserId = userId ?? 'defaultUser';
-                          String currentChannelId = channelId ?? '0';
 
-                          // sendMessage 함수 호출
-                          sendMessage(currentUserId, currentChannelId, messageText);
+                          sendMessage(currentUserId, channelId ?? '', messageText);
 
-                          setState(() {
-                            messages.insert(0, {
-                              'user': currentUserId,
-                              'message': messageText,
-                            });
-                            _commentController.clear();  // 메시지 전송 후 입력 필드 비우기
-                          });
+                          _commentController.clear();  // 메시지 전송 후 입력창 비우기
                         }
                       },
                     ),
@@ -864,11 +899,11 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
+
 
   // 방송 시작 시 documentId 받아오기
   String? documentId;  // documentId를 로컬 변수로 저장
@@ -876,7 +911,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   Future<void> _startBroadcast(int issueId, String channelId, String liveUrl, String thumbnailUrl) async {
     try {
       // Firestore에 방송 정보 저장
-      var docRef = await FirebaseFirestore.instance.collection('ServiceUrl').add({
+      var docRef = await streamingFirestore.collection('ServiceUrl').add({
         'issueId': issueId,         // Firestore에 issueId 저장
         'channelId' : channelId,
         'liveUrl': liveUrl,        // 방송 URL
@@ -895,25 +930,48 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   }
 
   // 방송 종료 시, firestore의 isLive가 true -> false로 변동
-  Future<void> stopBroadcast() async {
+  Future<void> stopBroadcast(String channelId) async {
     try {
-      if (documentId != null) {
-        // documentId를 사용하여 Firestore에서 isLive를 false로 업데이트
-        await FirebaseFirestore.instance
+      // Firestore에서 'channelId'가 일치하는 방송 문서를 찾음
+      var querySnapshot = await streamingFirestore
+          .collection('ServiceUrl')
+          .where('channelId', isEqualTo: channelId) // channelId가 일치하는 문서 찾기
+          .limit(1) // 하나의 문서만 업데이트
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        var documentId = querySnapshot.docs.first.id; // 일치하는 문서의 documentId를 가져옴
+
+        // 해당 문서의 isLive 필드를 false로 업데이트
+        await streamingFirestore
             .collection('ServiceUrl')
-            .doc(documentId)  // 로컬에 저장된 documentId로 문서 찾기
+            .doc(documentId)
             .update({
           'isLive': false,  // 방송 종료 시 isLive를 false로 설정
         });
 
         print("Broadcast stopped, isLive set to false.");
+
+        // Viewers 컬렉션에서 해당 channelId를 가진 모든 문서 삭제
+        var viewersSnapshot = await streamingFirestore
+            .collection('Viewers')
+            .where('channelId', isEqualTo: channelId)
+            .get();
+
+        for (var doc in viewersSnapshot.docs) {
+          await streamingFirestore.collection('Viewers').doc(doc.id).delete();
+          print("Viewer removed for channelId: $channelId");
+        }
+
+        print("All viewers removed for channelId: $channelId.");
       } else {
-        print("Error: documentId is null.");
+        print("Error: No document found with the given channelId.");
       }
     } catch (e) {
       print("Error stopping broadcast: $e");
     }
   }
+
 
   // 오른쪽 액션 버튼 분리
   Widget _buildActionButtons() {
@@ -940,7 +998,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
                   //await Future.delayed(Duration(seconds: 5)); // 5초 대기
                   //deleteChannel(channelId);
-                  await stopBroadcast();  // 방송 종료 시 stopBroadcast 호출
+                  await stopBroadcast(channelId ?? '');  // 방송 종료 시 stopBroadcast 호출
                   setState(() {}); // 상태 갱신
                 }
               } else {
@@ -1340,19 +1398,35 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     logError(e.code, e.description ?? "No description found");
     print('Error: ${e.code}\n${e.description ?? "No description found"}');
   }
-}
 
-// 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
-Future<void> sendMessage(String userId, String channelId, String messageText) async {
-  try {
-    await FirebaseFirestore.instance.collection('Chatting').add({
-      'userId': userId,
-      'channelId': channelId,
-      'text': messageText,
-      'createdAt': FieldValue.serverTimestamp(),  // 메시지 전송 시간
-    });
-    print("Message sent");
-  } catch (e) {
-    print("Error sending message: $e");
+  // Firestore 데이터 추가 -  방송 시작 시 입력
+  Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
+    try {
+      await streamingFirestore.collection('ServiceUrl').add({
+        'issueId': issueId,
+        'liveUrl': liveUrl,
+        'thumbnailUrl': thumbnailUrl,
+        'isLive': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      print('방송 정보가 Firestore에 추가되었습니다.');
+    } catch (e) {
+      print('Firestore에 데이터를 추가하는 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  // 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
+  Future<void> sendMessage(String userId, String channelId, String messageText) async {
+    try {
+      await streamingFirestore.collection('Chatting').add({
+        'userId': userId,
+        'channelId': channelId,
+        'text': messageText,
+        'createdAt': FieldValue.serverTimestamp(),  // 메시지 전송 시간
+      });
+      print("Message sent");
+    } catch (e) {
+      print("Error sending message: $e");
+    }
   }
 }

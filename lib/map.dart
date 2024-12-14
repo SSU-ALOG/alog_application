@@ -49,6 +49,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   late double minHeightRatio;
   late double maxHeightRatio;
 
+  FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp')); // 썸네일에서 사용하는 firestore
   OverlayEntry? _clusterInfoOverlayEntry;
   TextEditingController _searchController = TextEditingController();
   Set<String> _selectedFilters = {'ALL'};
@@ -68,18 +69,6 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   List<NMarker> _clusterMarkers = [];
   List<Map<String, dynamic>> _currentContentList = [];
   List<Map<String, dynamic>> _contentList = [];
-  // List<Map<String, dynamic>> _contentList = [
-  //   {"title": "사건 1", "category": "범죄", "description": "사건 설명 1", "latitude": 37.4900895, "longitude": 126.959504, "view": 10, "verified": true},
-  //   {"title": "사건 2", "category": "화재", "description": "사건 설명 2", "latitude": 37.4980895, "longitude": 126.959504, "view": 50, "verified": false},
-  //   {"title": "사건 3", "category": "건강위해", "description": "사건 설명 3", "latitude": 37.4920895, "longitude": 126.955504, "view": 100, "verified": true},
-  //   {"title": "사건 4", "category": "안전사고", "description": "사건 설명 4", "latitude": 37.4950895, "longitude": 126.953504, "view": 150, "verified": false},
-  //   {"title": "사건 5", "category": "자연재해", "description": "사건 설명 5", "latitude": 37.4970895, "longitude": 126.951504, "view": 200, "verified": true},
-  //   {"title": "사건 6", "category": "범죄", "description": "사건 설명 6", "latitude": 37.4850895, "longitude": 126.945504, "view": 5, "verified": false},
-  //   {"title": "사건 7", "category": "화재", "description": "사건 설명 7", "latitude": 37.5030895, "longitude": 126.960504, "view": 30, "verified": true},
-  //   {"title": "사건 8", "category": "건강위해", "description": "사건 설명 8", "latitude": 37.4990895, "longitude": 126.940504, "view": 70, "verified": false},
-  //   {"title": "사건 9", "category": "안전사고", "description": "사건 설명 9", "latitude": 37.4800895, "longitude": 126.980504, "view": 120, "verified": true},
-  //   {"title": "사건 10", "category": "자연재해", "description": "사건 설명 10", "latitude": 37.4700895, "longitude": 126.970504, "view": 90, "verified": false},
-  // ];
 
   @override
   void initState() {
@@ -112,32 +101,48 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   void _updateContentList(IssueProvider issueProvider) {
-    setState(() async {
-      _contentList = issueProvider.issues
-          .where((issue) => issue.status != '상황종료')
-          .map((issue) {
-        return {
-          "id": issue.issueId,
-          "title": issue.title,
-          "category": issue.category,
-          "description": issue.description ?? "내용이 없습니다.",
-          "latitude": issue.latitude,
-          "longitude": issue.longitude,
-          "view": 0,
-          "verified": issue.verified,
-        };
-      }).toList();
+    final contentList = issueProvider.issues
+        .where((issue) => issue.status != '상황종료')
+        .map((issue) {
+      return {
+        "id": issue.issueId,
+        "title": issue.title,
+        "category": issue.category,
+        "description": issue.description ?? "내용이 없습니다.",
+        "latitude": issue.latitude,
+        "longitude": issue.longitude,
+        "view": 0,
+        "verified": issue.verified,
+      };
+    }).toList();
+
+    setState(() {
+      _contentList = contentList;
       dev.log("Content List: $_contentList", name: "MapScreen");
+    });
+
+    // 비동기 작업 실행
+    Future.microtask(() async {
+      for (var content in _contentList) {
+        final issueId = content["id"] as int;
+        final viewerCount = await fetchViewerCount(issueId);
+        setState(() {
+          content["view"] = viewerCount;
+        });
+      }
 
       await _addContentMarkers();
+
       if (_searchKeyword == '') {
         await _updateMarkers();
       } else {
-        _performSearch();
+        await _performSearch();
       }
+
       if (_currentLocation != null) {
         await _calculateDistances();
       }
+
       if (clickedIssueId != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _highlightIssue(clickedIssueId!);
@@ -229,8 +234,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-         _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
-        //_currentLocation = defaultLocation; // defalut로 학교 위치
+        _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
+        // _currentLocation = defaultLocation; // defalut로 학교 위치
       });
     } catch (e) {
       setState(() {
@@ -426,7 +431,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   }
 
   // 검색
-  void _performSearch() {
+  Future<void> _performSearch() async {
     setState(() {
       _searchKeyword = _searchController.text.toLowerCase().trim();
 
@@ -1123,7 +1128,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 실시간으로 썸네일 URL 가져오기
   // Firestore에서 `issueId`와 `isLive`가 true인 첫 번째 문서의 thumbnailUrl을 실시간으로 가져오는 Stream
   Stream<QuerySnapshot> getThumbnailUrlStream(int? issueId) {
-    return FirebaseFirestore.instance
+    return streamingFirestore
         .collection('ServiceUrl')  // `serviceURL` 컬렉션
         .where('issueId', isEqualTo: issueId)  // issueId가 int로 일치하는 문서
         .where('isLive', isEqualTo: true)  // isLive가 true인 문서
@@ -1215,42 +1220,47 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     width: double.infinity,
                     color: Colors.grey[200],
                     child: const Center(child: CircularProgressIndicator()),
-                  );  // 데이터 로딩 중
+                  ); // 데이터 로딩 중
                 }
 
+                // 조건에 맞는 문서가 없을 때 (isLive가 false인 경우)
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  print('No documents found matching the criteria.');  // 조건에 맞는 문서가 없을 때 로그 출력
+                  print('No documents found matching the criteria.'); // 조건에 맞는 문서가 없을 때 로그 출력
                   return Container(
                     height: 200,
                     width: double.infinity,
                     color: Colors.grey[200],
-                    child: const Center(child: Icon(Icons.videocam, size: 50, color: Colors.grey)),
-                  );  // 데이터가 없으면 아이콘 표시
+                    child: const Center(
+                      child: Icon(Icons.videocam, size: 50, color: Colors.grey),
+                    ), // 데이터가 없으면 아이콘 표시
+                  );
                 }
 
                 // 썸네일 URL 가져오기
                 var document = snapshot.data!.docs.first;
                 var thumbnailUrl = document['thumbnailUrl'];
 
-                if (thumbnailUrl == null) {
-                  print('Thumbnail URL is null for document: ${document.id}');  // 썸네일 URL이 null일 때 로그 출력
-                } else {
-                  print('Thumbnail URL: $thumbnailUrl');  // 썸네일 URL이 있을 때 로그 출력
-                }
+                print('Thumbnail URL: $thumbnailUrl'); // 썸네일 URL이 있을 때 로그 출력
 
                 return Container(
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
                     image: thumbnailUrl != null
                         ? DecorationImage(
-                      image: NetworkImage(thumbnailUrl),  // 썸네일 이미지 표시
+                      image: NetworkImage(thumbnailUrl), // 썸네일 이미지 표시
                       fit: BoxFit.cover,
                     )
                         : null,
                   ),
+                  child: thumbnailUrl == null
+                      ? const Icon(
+                    Icons.videocam,
+                    size: 50,
+                    color: Colors.grey,
+                  )
+                      : null, // 썸네일이 없으면 아이콘 표시
                 );
               },
             ),
