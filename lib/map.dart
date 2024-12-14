@@ -13,7 +13,6 @@ import 'main.dart';
 import 'streaming_sender.dart';
 import 'streaming_viewer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -111,39 +110,44 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
     });
   }
 
-  void _updateContentList(IssueProvider issueProvider) {
-    setState(() async {
-      _contentList = issueProvider.issues
-          .where((issue) => issue.status != '상황종료')
-          .map((issue) async {
-        return {
-          "id": issue.issueId,
-          "title": issue.title,
-          "category": issue.category,
-          "description": issue.description ?? "내용이 없습니다.",
-          "latitude": issue.latitude,
-          "longitude": issue.longitude,
-          "view": await fetchViewerCount('${issue.issueId}'),
-          "verified": issue.verified,
-        };
-      }).cast<Map<String, Object?>>().toList();
-      dev.log("Content List: $_contentList", name: "MapScreen");
+  Future<void> _updateContentList(IssueProvider issueProvider) async {
+    List<Map<String, Object?>> updatedContentList = [];
 
-      await _addContentMarkers();
-      if (_searchKeyword == '') {
-        await _updateMarkers();
-      } else {
-        _performSearch();
-      }
-      if (_currentLocation != null) {
-        await _calculateDistances();
-      }
-      if (clickedIssueId != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _highlightIssue(clickedIssueId!);
-        });
-      }
+    for (var issue in issueProvider.issues.where((issue) => issue.status != '상황종료')) {
+      int viewerCount = await fetchViewerCount('${issue.issueId}');
+      updatedContentList.add({
+        "id": issue.issueId,
+        "title": issue.title,
+        "category": issue.category,
+        "description": issue.description ?? "내용이 없습니다.",
+        "latitude": issue.latitude,
+        "longitude": issue.longitude,
+        "view": viewerCount,
+        "verified": issue.verified,
+      });
+    }
+
+    setState(() {
+      _contentList = updatedContentList;
+      dev.log("Content List: $_contentList", name: "MapScreen");
     });
+
+    await _addContentMarkers();
+
+    if (_searchKeyword == '') {
+      await _updateMarkers();
+    } else {
+      _performSearch();
+    }
+    if (_currentLocation != null) {
+      await _calculateDistances();
+    }
+
+    if (clickedIssueId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _highlightIssue(clickedIssueId!);
+      });
+    }
   }
 
   // 알림에 의한 특정 이슈 강조
