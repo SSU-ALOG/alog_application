@@ -49,6 +49,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   late double minHeightRatio;
   late double maxHeightRatio;
 
+  FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp')); // 썸네일에서 사용하는 firestore
   OverlayEntry? _clusterInfoOverlayEntry;
   TextEditingController _searchController = TextEditingController();
   Set<String> _selectedFilters = {'ALL'};
@@ -229,8 +230,8 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
           desiredAccuracy: LocationAccuracy.high);
       setState(() {
         dev.log("Current Location status: $position", name: "_setCurrentLocation");
-         _currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
-        //_currentLocation = defaultLocation; // defalut로 학교 위치
+         //_currentLocation = NLatLng(position.latitude, position.longitude); // 현재 위치
+        _currentLocation = defaultLocation; // defalut로 학교 위치
       });
     } catch (e) {
       setState(() {
@@ -1123,7 +1124,7 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
   // 실시간으로 썸네일 URL 가져오기
   // Firestore에서 `issueId`와 `isLive`가 true인 첫 번째 문서의 thumbnailUrl을 실시간으로 가져오는 Stream
   Stream<QuerySnapshot> getThumbnailUrlStream(int? issueId) {
-    return FirebaseFirestore.instance
+    return streamingFirestore
         .collection('ServiceUrl')  // `serviceURL` 컬렉션
         .where('issueId', isEqualTo: issueId)  // issueId가 int로 일치하는 문서
         .where('isLive', isEqualTo: true)  // isLive가 true인 문서
@@ -1215,42 +1216,47 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
                     width: double.infinity,
                     color: Colors.grey[200],
                     child: const Center(child: CircularProgressIndicator()),
-                  );  // 데이터 로딩 중
+                  ); // 데이터 로딩 중
                 }
 
+                // 조건에 맞는 문서가 없을 때 (isLive가 false인 경우)
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  print('No documents found matching the criteria.');  // 조건에 맞는 문서가 없을 때 로그 출력
+                  print('No documents found matching the criteria.'); // 조건에 맞는 문서가 없을 때 로그 출력
                   return Container(
                     height: 200,
                     width: double.infinity,
                     color: Colors.grey[200],
-                    child: const Center(child: Icon(Icons.videocam, size: 50, color: Colors.grey)),
-                  );  // 데이터가 없으면 아이콘 표시
+                    child: const Center(
+                      child: Icon(Icons.videocam, size: 50, color: Colors.grey),
+                    ), // 데이터가 없으면 아이콘 표시
+                  );
                 }
 
                 // 썸네일 URL 가져오기
                 var document = snapshot.data!.docs.first;
                 var thumbnailUrl = document['thumbnailUrl'];
 
-                if (thumbnailUrl == null) {
-                  print('Thumbnail URL is null for document: ${document.id}');  // 썸네일 URL이 null일 때 로그 출력
-                } else {
-                  print('Thumbnail URL: $thumbnailUrl');  // 썸네일 URL이 있을 때 로그 출력
-                }
+                print('Thumbnail URL: $thumbnailUrl'); // 썸네일 URL이 있을 때 로그 출력
 
                 return Container(
                   height: 200,
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
                     image: thumbnailUrl != null
                         ? DecorationImage(
-                      image: NetworkImage(thumbnailUrl),  // 썸네일 이미지 표시
+                      image: NetworkImage(thumbnailUrl), // 썸네일 이미지 표시
                       fit: BoxFit.cover,
                     )
                         : null,
                   ),
+                  child: thumbnailUrl == null
+                      ? const Icon(
+                    Icons.videocam,
+                    size: 50,
+                    color: Colors.grey,
+                  )
+                      : null, // 썸네일이 없으면 아이콘 표시
                 );
               },
             ),

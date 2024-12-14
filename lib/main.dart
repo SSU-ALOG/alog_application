@@ -46,7 +46,20 @@ void main() async {
 // 초기화 함수
 Future<void> initialize() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();  // Firebase 초기화
+
+  await Firebase.initializeApp();  // Firebase 초기화 (예원이 부분)
+
+  // 두 번째 Firebase 앱 초기화 (방송 부분)
+  await Firebase.initializeApp(
+    name: 'streamingApp',  // 두 번째 앱의 이름 지정
+    options: FirebaseOptions(
+      apiKey: "AIzaSyC9cB0sfqJEpE4Ge6whn-lt3SxFMA1-LKQ",  // API Key
+      appId: "1:1052139545198:android:7a42b2de161e6da6487c7f",  // 앱 ID
+      messagingSenderId: "1052139545198",  // 메시징 발신자 ID
+      projectId: "alog-81aea",  // 프로젝트 ID
+      storageBucket: "alog-81aea.firebasestorage.app",  // 스토리지 버킷
+    ),
+  );
 
   // 환경 변수 설정
   await dotenv.load(fileName: '.env');
