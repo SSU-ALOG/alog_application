@@ -35,9 +35,7 @@ class LiveStreamWatchScreen extends StatefulWidget {
 
 class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
   final TextEditingController _commentController = TextEditingController();
-  final List<Map<String, String>> message = []; // 채팅 메시지 리스트
-
-  //FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
+  final List<Map<String, String>> messages = []; // 채팅 메시지 리스트
 
   late PageController _pageController;
   late Stream<List<Map<String, dynamic>>> liveUrlsStream;
@@ -53,6 +51,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
     liveUrlsStream = _fetchLiveUrls(widget.id);
 
     userId = Provider.of<UserData>(context, listen: false).name; // 로그인된 유저 이름 가져오기
+    userJoined(userId ?? 'defaultUserId', widget.id ?? 0); // 시청자가 입장할 때 호출
   }
 
   Stream<List<Map<String, dynamic>>> _fetchLiveUrls(int? issueId) {
@@ -73,6 +72,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
 
   @override
   void dispose() {
+    userLeft(userId ?? 'defaultUserId', widget.id ?? 0); // 시청자가 퇴장할 때 호출
     _pageController.dispose();
     super.dispose();
   }
@@ -192,7 +192,6 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       leading: IconButton(
         icon: Icon(Icons.arrow_back_ios, color: Colors.black),
         onPressed: () {
-          userLeft(userId ?? 'defaultUserId', widget.id ?? 0, currentChannelId ?? '');
           Navigator.pop(context);
         },
       ),
@@ -440,6 +439,10 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       log("Error sending message: $e");
     }
   }
+
+  // 사용 예시
+  // int viewerCount = await fetchViewerCount(issueId);
+  // print('Viewer count for issueId $issueId: $viewerCount');
 }
 
 class VideoPlayerWidget extends StatefulWidget {

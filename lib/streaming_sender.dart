@@ -480,6 +480,30 @@ Future<String?> getThumbnailUrl(String? channelId) async {
   }
 }
 
+// Firestore 데이터 추가 -  방송 시작 시 입력
+Future<void> addBroadcast(int issueId, String liveUrl, String thumbnailUrl) async {
+  try {
+    await FirebaseFirestore.instance.collection('ServiceUrl').add({
+      'issueId': issueId,
+      'liveUrl': liveUrl,
+      'thumbnailUrl': thumbnailUrl,
+      'isLive': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    print('방송 정보가 Firestore에 추가되었습니다.');
+  } catch (e) {
+    print('Firestore에 데이터를 추가하는 중 오류가 발생했습니다: $e');
+  }
+}
+
+// Firestore - 방송 종료 시 방송여부 FALSE로 변경
+Future<void> endBroadcast(String documentId) async {
+  await FirebaseFirestore.instance.collection('ServiceUrl').doc(documentId).update({
+    'isLive': false,
+  });
+}
+
+
 // Declare the camera descriptions globally
 List<CameraDescription> cameras = [];
 
@@ -612,7 +636,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
       if (shouldStop) {
         await stopVideoStreaming(); // 스트리밍 종료
-        await stopBroadcast(channelId ?? '');      // 방송 종료
+        await stopBroadcast();      // 방송 종료
         setState(() {});
         return true; // 뒤로가기 허용
       } else {
@@ -707,6 +731,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                 );
               }
 
+              // 실시간으로 시청자 수를 받아와서 표시합니다.
               int viewerCount = snapshot.data!.docs.length;
 
               return Row(
@@ -714,7 +739,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                   Icon(Icons.remove_red_eye, color: Colors.grey),
                   SizedBox(width: 5),
                   Text(
-                    '$viewerCount',
+                    '$viewerCount',  // 시청자 수 표시
                     style: TextStyle(color: Colors.grey),
                   ),
                 ],
