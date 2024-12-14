@@ -121,7 +121,16 @@ class _MapScreenState extends State<MapScreen> with SingleTickerProviderStateMix
       dev.log("Content List: $_contentList", name: "MapScreen");
     });
 
+    // 비동기 작업 실행
     Future.microtask(() async {
+      for (var content in _contentList) {
+        final issueId = content["id"] as int;
+        final viewerCount = await fetchViewerCount(issueId);
+        setState(() {
+          content["view"] = viewerCount;
+        });
+      }
+
       await _addContentMarkers();
 
       if (_searchKeyword == '') {

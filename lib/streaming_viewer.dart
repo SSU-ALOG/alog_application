@@ -15,6 +15,8 @@ import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'dart:developer';
 
+FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
+
 class LiveStreamWatchScreen extends StatefulWidget {
   // 상세보기 창의 이슈번호와 제목을 받아옴
   final int? id;
@@ -35,7 +37,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
   final TextEditingController _commentController = TextEditingController();
   final List<Map<String, String>> message = []; // 채팅 메시지 리스트
 
-  FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
+  //FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
 
   late PageController _pageController;
   late Stream<List<Map<String, dynamic>>> liveUrlsStream;
@@ -90,7 +92,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
-        appBar: _buildAppBar(),
+        appBar: _buildAppBar(currentChannelId),
         body: StreamBuilder<List<Map<String, dynamic>>>(  // StreamBuilder로 방송 정보 받기
           stream: liveUrlsStream,
           builder: (context, snapshot) {
@@ -183,7 +185,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(String? channelId) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -202,7 +204,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       actions: [
         Padding(
           padding: const EdgeInsets.all(8.0),
-          child: currentChannelId == null
+          child: channelId == null
               ? Row(
             children: [
               Icon(Icons.remove_red_eye, color: Colors.grey),
@@ -216,7 +218,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
               : StreamBuilder<QuerySnapshot>(
             stream: streamingFirestore
                 .collection('Viewers')
-                .where('channelId', isEqualTo: currentChannelId)
+                .where('channelId', isEqualTo: channelId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -250,6 +252,7 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       ],
     );
   }
+
 
   Widget _buildVideoPlayer(String liveUrl, String channelId) {
     return VideoPlayerWidget(liveUrl: liveUrl, channelId: channelId);
@@ -437,29 +440,6 @@ class _LiveStreamWatchScreenState extends State<LiveStreamWatchScreen> {
       log("Error sending message: $e");
     }
   }
-
-
-// 시청자수 반환 (마커 크기 조절시 사용)
-  Future<int> fetchViewerCount(String issueId) async {
-    try {
-      // Viewers 컬렉션에서 issueId가 일치하는 문서 가져오기
-      QuerySnapshot querySnapshot = await streamingFirestore
-          .collection('Viewers')
-          .where('issueId', isEqualTo: issueId)
-          .get();
-
-      // 문서 개수 반환
-      return querySnapshot.docs.length;
-    } catch (e) {
-      // 에러 처리
-      print('Error fetching viewer count: $e');
-      return 0; // 에러 발생 시 0 반환
-    }
-
-    // 사용 예시
-    // int viewerCount = await fetchViewerCount(issueId);
-    // print('Viewer count for issueId $issueId: $viewerCount');
-  }
 }
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -477,6 +457,8 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   ChewieController? _chewieController;
   bool _isPlaying = true;  // 방송이 재생 중인지 여부
   bool _isRemovingViewers = false; // 시청자 삭제 작업 여부 확인
+
+  //FirebaseFirestore streamingFirestore = FirebaseFirestore.instanceFor(app: Firebase.app('streamingApp'));
 
   @override
   void initState() {
@@ -559,13 +541,13 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
     try {
       log("@@@@@@@@@@@@@@@@@@@@@@@@@ removeViewers 호출 @@@@@@@@@@@@@@@@@@@@@@@@@@@@");
       // 해당 channelId를 가진 모든 시청자 삭제
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
+      QuerySnapshot snapshot = await streamingFirestore
           .collection('Viewers')
           .where('channelId', isEqualTo: channelId)
           .get();
 
       for (var doc in snapshot.docs) {
-        await FirebaseFirestore.instance.collection('Viewers').doc(doc.id).delete();
+        await streamingFirestore.collection('Viewers').doc(doc.id).delete();
         log("Removed viewer from channel: $channelId");
       }
     } catch (e) {
@@ -593,5 +575,25 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
   }
 }
 
+// 시청자수 반환 (마커 크기 조절시 사용)
+Future<int> fetchViewerCount(int issueId) async {
+  try {
+    // Viewers 컬렉션에서 issueId가 일치하는 문서 가져오기
+    QuerySnapshot querySnapshot = await streamingFirestore
+        .collection('Viewers')
+        .where('issueId', isEqualTo: issueId)
+        .get();
 
+    // 문서 개수 반환
+    return querySnapshot.docs.length;
+  } catch (e) {
+    // 에러 처리
+    print('Error fetching viewer count: $e');
+    return 0; // 에러 발생 시 0 반환
+  }
+
+  // 사용 예시
+  // int viewerCount = await fetchViewerCount(issueId);
+  // print('Viewer count for issueId $issueId: $viewerCount');
+}
 

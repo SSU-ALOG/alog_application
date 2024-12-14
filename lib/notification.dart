@@ -48,7 +48,7 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
-  late Future<List<Message>> futureMessages;
+  List<Message> messages = [];
   late TabController _tabController;
   final ApiService apiService = ApiService();
 
@@ -79,18 +79,16 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     final messageProvider = Provider.of<MessageProvider>(context, listen: false);
 
     messageProvider.addListener(() {
-      _updateContentList(messageProvider);
+      _updateMessages(messageProvider);
     });
   }
 
-  void _updateContentList(MessageProvider messageProvider) {
-    // MessageProvider에서 데이터를 가져옴
-    futureMessages = Future(() async {
-      // MessageProvider의 데이터를 가져와서 빈 데이터 처리
-      final List<Message> messages = messageProvider.messages;
+  void _updateMessages(MessageProvider messageProvider) {
+    setState(() {
+      messages = messageProvider.messages;
 
       if (messages.isEmpty) {
-        return [];
+        messages = [];
       }
 
       // "찾습니다" 문구를 기준으로 분류 업데이트
@@ -99,8 +97,6 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           message.emergencyStep = "실종알림";
         }
       }
-
-      return messages;
     });
   }
 
@@ -207,49 +203,30 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   // 메시지 리스트를 빌드하는 함수
   Widget _buildMessageList() {
-    return FutureBuilder<List<Message>>(
-      future: futureMessages, // 초기화된 futureMessages
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          // 데이터 로드 중
-          return const Center(child: CircularProgressIndicator());
-        }
+    final filteredMessages = _applyFilters(messages);
 
-        if (snapshot.hasError) {
-          // 오류 발생 시
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
+    if (filteredMessages.isEmpty) {
+      return const Center(
+        child: Text(
+          '재난 문자 내용이 없습니다.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
 
-        final messages = snapshot.data ?? [];
-        final filteredMessages = _applyFilters(messages);
+    return ListView.builder(
+      itemCount: filteredMessages.length,
+      itemBuilder: (context, index) {
+        final message = filteredMessages[index];
 
-        if (filteredMessages.isEmpty) {
-          // 메시지가 없을 경우
-          return const Center(
-            child: Text(
-              '재난 문자 내용이 없습니다.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-          );
-        }
-
-        // 메시지가 있을 경우 ListView로 렌더링
-        return ListView.builder(
-          itemCount: filteredMessages.length,
-          itemBuilder: (context, index) {
-            final message = filteredMessages[index];
-
-            return MessageCard(
-              messageType: message.emergencyStep, // 긴급단계
-              messageContent: message.msgContent, // 메시지 내용
-              messageTime: message.createDate, // 생성 날짜
-            );
-          },
+        return MessageCard(
+          messageType: message.emergencyStep, // 긴급단계
+          messageContent: message.msgContent, // 메시지 내용
+          messageTime: message.createDate, // 생성 날짜
         );
       },
     );
   }
-
 
   // 필터 탭 내용
   Widget _buildEmergencyStepFilter() {
