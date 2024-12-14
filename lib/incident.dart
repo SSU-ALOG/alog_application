@@ -188,6 +188,7 @@ class _IncidentScreenState extends State<IncidentScreen> {
     return Scaffold(
         // appBar- main.dart
         backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: false, // 키보드로 인해 UI가 밀리지 않도록 설정
         body: Column(children: [
           // upper widget: search box, category, status, and region
           _buildFilters(),
