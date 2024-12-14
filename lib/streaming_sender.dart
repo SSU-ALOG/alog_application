@@ -612,7 +612,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
       if (shouldStop) {
         await stopVideoStreaming(); // 스트리밍 종료
-        await stopBroadcast();      // 방송 종료
+        await stopBroadcast(channelId ?? '');      // 방송 종료
         setState(() {});
         return true; // 뒤로가기 허용
       } else {
@@ -659,7 +659,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
             if (shouldStop) {
               await stopVideoStreaming(); // 스트리밍 종료
-              await stopBroadcast();      // 방송 종료
+              await stopBroadcast(channelId ?? '');      // 방송 종료
               setState(() {});            // 상태 갱신
               Navigator.pop(context);     // 뒤로가기
             }
@@ -677,11 +677,22 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
         Padding(
           padding: const EdgeInsets.all(8.0),
           // Chatting 컬렉션을 실시간으로 구독하여, 채팅을 화면에 표시
-          child: StreamBuilder<QuerySnapshot>(
+          child: channelId == null
+              ? Row(
+            children: [
+              Icon(Icons.remove_red_eye, color: Colors.grey),
+              SizedBox(width: 5),
+              Text(
+                '0',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          )
+              : StreamBuilder<QuerySnapshot>(
             stream: streamingFirestore
                 .collection('Viewers')
-                .where('channelId')  // 특정 채널에 대한 시청자 정보
-                .snapshots(),  // 실시간으로 데이터 스트림을 받아옵니다.
+                .where('channelId', isEqualTo: channelId)
+                .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return Row(
@@ -689,14 +700,13 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                     Icon(Icons.remove_red_eye, color: Colors.grey),
                     SizedBox(width: 5),
                     Text(
-                      '0',  // 데이터를 아직 못 받았을 때는 0으로 표시
+                      '0',
                       style: TextStyle(color: Colors.grey),
                     ),
                   ],
                 );
               }
 
-              // 실시간으로 시청자 수를 받아와서 표시합니다.
               int viewerCount = snapshot.data!.docs.length;
 
               return Row(
@@ -704,7 +714,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
                   Icon(Icons.remove_red_eye, color: Colors.grey),
                   SizedBox(width: 5),
                   Text(
-                    '$viewerCount',  // 시청자 수 표시
+                    '$viewerCount',
                     style: TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -874,25 +884,48 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
   }
 
   // 방송 종료 시, firestore의 isLive가 true -> false로 변동
-  Future<void> stopBroadcast() async {
+  Future<void> stopBroadcast(String channelId) async {
     try {
-      if (documentId != null) {
-        // documentId를 사용하여 Firestore에서 isLive를 false로 업데이트
+      // Firestore에서 'channelId'가 일치하는 방송 문서를 찾음
+      var querySnapshot = await streamingFirestore
+          .collection('ServiceUrl')
+          .where('channelId', isEqualTo: channelId) // channelId가 일치하는 문서 찾기
+          .limit(1) // 하나의 문서만 업데이트
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        var documentId = querySnapshot.docs.first.id; // 일치하는 문서의 documentId를 가져옴
+
+        // 해당 문서의 isLive 필드를 false로 업데이트
         await streamingFirestore
             .collection('ServiceUrl')
-            .doc(documentId)  // 로컬에 저장된 documentId로 문서 찾기
+            .doc(documentId)
             .update({
           'isLive': false,  // 방송 종료 시 isLive를 false로 설정
         });
 
         print("Broadcast stopped, isLive set to false.");
+
+        // Viewers 컬렉션에서 해당 channelId를 가진 모든 문서 삭제
+        var viewersSnapshot = await streamingFirestore
+            .collection('Viewers')
+            .where('channelId', isEqualTo: channelId)
+            .get();
+
+        for (var doc in viewersSnapshot.docs) {
+          await streamingFirestore.collection('Viewers').doc(doc.id).delete();
+          print("Viewer removed for channelId: $channelId");
+        }
+
+        print("All viewers removed for channelId: $channelId.");
       } else {
-        print("Error: documentId is null.");
+        print("Error: No document found with the given channelId.");
       }
     } catch (e) {
       print("Error stopping broadcast: $e");
     }
   }
+
 
   // 오른쪽 액션 버튼 분리
   Widget _buildActionButtons() {
@@ -919,7 +952,7 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
 
                   //await Future.delayed(Duration(seconds: 5)); // 5초 대기
                   //deleteChannel(channelId);
-                  await stopBroadcast();  // 방송 종료 시 stopBroadcast 호출
+                  await stopBroadcast(channelId ?? '');  // 방송 종료 시 stopBroadcast 호출
                   setState(() {}); // 상태 갱신
                 }
               } else {
@@ -1334,13 +1367,6 @@ class _LiveStreamStartScreenState extends State<LiveStreamStartScreen> with Widg
     } catch (e) {
       print('Firestore에 데이터를 추가하는 중 오류가 발생했습니다: $e');
     }
-  }
-
-// Firestore - 방송 종료 시 방송여부 FALSE로 변경
-  Future<void> endBroadcast(String documentId) async {
-    await streamingFirestore.collection('ServiceUrl').doc(documentId).update({
-      'isLive': false,
-    });
   }
 
   // 채팅 메시지를 Firestore에 전송하고 실시간으로 받아옴
