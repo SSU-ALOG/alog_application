@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build APK
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -33,7 +33,7 @@ jobs:
         run: flutter build apk --release
 
       - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/apk/release/app-release.apk
@@ -41,11 +41,11 @@ jobs:
   release:
     name: Create GitHub Release
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Download APK artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: app-release-apk
           path: .
