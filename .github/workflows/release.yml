@@ -1,58 +1,22 @@
-name: Build and Release APK
+name: Upload APK to GitHub Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'  # v로 시작하는 태그를 푸시하면 실행됨
 
 jobs:
-  build:
-    name: Build APK
+  release:
+    name: Upload APK to GitHub Releases
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Remove Flutter Cache
-        run: rm -rf $HOME/.flutter
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.5'
-          channel: 'stable'
-
-      - name: Debug Flutter Version
-        run: flutter doctor -v 
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release --target-platform=android-arm64
-
-      - name: Upload APK to Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: build/app/outputs/apk/release/app-release.apk
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Download APK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-release-apk
-          path: .
-
-      - name: Create GitHub Release
+      - name: Upload Existing APK to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: app-release.apk
+          files: build/app/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
